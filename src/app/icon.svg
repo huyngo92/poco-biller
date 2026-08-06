@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Poco Biller">
+  <!--
+    Favicon: một vòng tròn bị cắt đôi — ẩn ý "chia tiền".
+    Chọn khe dọc thay vì đường chéo vì ở 16px khe chéo bị răng cưa và
+    trông như vết bẩn. Nửa phải mờ hơn để mắt đọc ra "hai phần" ngay cả
+    khi cả hai đều màu trắng.
+  -->
+  <defs>
+    <linearGradient id="pb-bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0a84ff"/>
+      <stop offset="1" stop-color="#0062cc"/>
+    </linearGradient>
+    <clipPath id="pb-circle">
+      <circle cx="32" cy="32" r="21"/>
+    </clipPath>
+  </defs>
+
+  <!-- rx 14/64 ≈ tỉ lệ bo góc của app icon iOS -->
+  <rect width="64" height="64" rx="14" fill="url(#pb-bg)"/>
+
+  <g clip-path="url(#pb-circle)">
+    <rect x="0" y="0" width="30" height="64" fill="#ffffff"/>
+    <rect x="34" y="0" width="30" height="64" fill="#ffffff" fill-opacity="0.55"/>
+  </g>
+</svg>

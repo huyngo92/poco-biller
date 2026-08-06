@@ -1,0 +1,1456 @@
+/* =========================================================================
+   Poco Biller — hệ thống thiết kế theo Apple Human Interface Guidelines
+   -------------------------------------------------------------------------
+   Nguyên tắc:
+   - Màu lấy từ bộ System Colors của iOS, không tự pha màu lẻ.
+   - Chữ theo thang text style của iOS (largeTitle → caption2), thân 17px.
+   - Bo góc 10-16px, đường kẻ hairline, không đổ bóng trong danh sách.
+   - Chuyển động dùng easing kiểu iOS và luôn tôn trọng reduced-motion.
+   ========================================================================= */
+
+:root {
+  color-scheme: light dark;
+
+  /* --- System colors (light) --- */
+  --tint: #007aff; /* systemBlue: icon, viền, nét mảnh */
+  --tint-strong: #0062cc; /* dùng cho chữ và nền đặc, đạt 4.5:1 trên trắng */
+  --tint-wash: #e8f1ff; /* nền tô nhạt */
+  --red: #d70015; /* systemRed đã tối đi cho đủ tương phản chữ */
+  --red-wash: #fdecec;
+  --green: #1c7c3f; /* systemGreen đã tối đi cho đủ tương phản chữ */
+  --green-wash: #e8f6ec;
+
+  /* --- Màu hạng mục cho chart (system colors iOS) ---
+     Mỗi hạng mục gắn cứng một màu trong src/lib/chart.ts. Thứ tự ở đây được
+     chọn sao cho hai màu cạnh nhau trong donut không trùng tông. */
+  --c-orange: #d96500; /* Ăn uống — tối hơn systemOrange để đạt 3:1 trên trắng */
+  --c-brown: #9c6644; /* Cà phê */
+  --c-blue: #007aff; /* Đi lại */
+  --c-indigo: #5145c8; /* Lưu trú */
+  --c-pink: #e0396b; /* Giải trí */
+  --c-purple: #9440d0; /* Mua sắm */
+  --c-teal: #128a8a; /* Hoá đơn cố định */
+  --c-gray: #8e8e93; /* Khác */
+
+  /* --- Nền theo kiểu grouped của iOS --- */
+  --bg-grouped: #f2f2f7; /* systemGroupedBackground */
+  --bg-elevated: #ffffff; /* secondarySystemGroupedBackground */
+  --fill-quaternary: rgba(116, 116, 128, 0.08); /* nền nút phụ, track */
+  --fill-tertiary: rgba(116, 116, 128, 0.12);
+
+  /* --- Chữ --- */
+  --label: #000000;
+  --label-secondary: #4b4b52; /* ~secondaryLabel, đủ 4.5:1 */
+  --label-tertiary: #6d6d74; /* nhãn nhỏ, vẫn đạt 4.5:1 */
+  --label-on-tint: #ffffff;
+
+  /* --- Đường kẻ --- */
+  --separator: rgba(60, 60, 67, 0.29);
+  --separator-opaque: #c6c6c8;
+
+  /* --- Bo góc (iOS dùng continuous corner) --- */
+  --r-sm: 8px;
+  --r-md: 10px;
+  --r-lg: 12px;
+  --r-xl: 16px;
+  --r-pill: 999px;
+
+  /* --- Kích thước icon: thang SF Symbols --- */
+  --icon-sm: 17px;
+  --icon-md: 20px;
+  --icon-tab: 22px;
+  --icon-lg: 28px;
+
+  /* --- Vùng chạm tối thiểu 44pt theo HIG --- */
+  --hit: 44px;
+
+  /* --- Chuyển động --- */
+  --ease-ios: cubic-bezier(0.32, 0.72, 0, 1);
+  --dur-fast: 0.18s;
+  --dur: 0.28s;
+
+  --shadow-raised: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-sheet: 0 -1px 24px rgba(0, 0, 0, 0.14);
+  --shadow-segment: 0 1px 3px rgba(0, 0, 0, 0.12);
+
+  /* SF Pro trên máy Apple, font hệ thống ở nơi khác — không tải font ngoài */
+  --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas,
+    "Liberation Mono", monospace;
+
+  /* Bí danh giữ lại cho các chỗ còn tham chiếu token cũ */
+  --paper: var(--bg-grouped);
+  --card: var(--bg-elevated);
+  --ink: var(--label);
+  --ink-soft: var(--label-secondary);
+  --ink-faint: var(--label-tertiary);
+  --rule: var(--separator);
+  --rule-strong: var(--separator-opaque);
+  --ink-blue: var(--tint-strong);
+  --ink-blue-soft: var(--tint-wash);
+  --debt: var(--red);
+  --debt-soft: var(--red-wash);
+  --credit: var(--green);
+  --credit-soft: var(--green-wash);
+  --radius: var(--r-lg);
+  --shadow: var(--shadow-raised);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --tint: #0a84ff;
+    --tint-strong: #4da3ff; /* trên nền tối thì bản sáng mới đủ tương phản */
+    --tint-wash: rgba(10, 132, 255, 0.18);
+    --red: #ff6961;
+    --red-wash: rgba(255, 105, 97, 0.16);
+
+    /* Màu hạng mục sáng lên để nổi trên nền #1c1c1e */
+    --c-orange: #ff9f0a;
+    --c-brown: #c79269;
+    --c-blue: #0a84ff;
+    /* Sáng hơn systemIndigo để tách khỏi --c-blue khi hai lát nằm cạnh nhau */
+    --c-indigo: #a79bff;
+    --c-pink: #ff5c8a;
+    --c-purple: #bf5af2;
+    --c-teal: #40c8c8;
+    --c-gray: #98989f;
+    --green: #4cd67b;
+    --green-wash: rgba(76, 214, 123, 0.16);
+
+    --bg-grouped: #000000;
+    --bg-elevated: #1c1c1e;
+    --fill-quaternary: rgba(118, 118, 128, 0.18);
+    --fill-tertiary: rgba(118, 118, 128, 0.24);
+
+    --label: #ffffff;
+    --label-secondary: #b9b9bf;
+    --label-tertiary: #98989f;
+    --label-on-tint: #ffffff;
+
+    --separator: rgba(84, 84, 88, 0.65);
+    --separator-opaque: #38383a;
+
+    --shadow-raised: none;
+    --shadow-sheet: 0 -1px 24px rgba(0, 0, 0, 0.6);
+    /* Nền tối thì bóng đen vô hình — dùng viền sáng mảnh để tách lớp */
+    --shadow-segment: 0 0 0 0.5px rgba(255, 255, 255, 0.16);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg-grouped);
+  color: var(--label);
+  font-family: var(--sans);
+  font-size: 17px; /* body text style của iOS */
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+/* Vòng focus kiểu iOS: viền tint dày, bù khoảng để không dính nội dung */
+:focus-visible {
+  outline: 3px solid var(--tint);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+/* Mọi icon đều chạy qua components/Icons.tsx nên chỉ cần một quy tắc chung */
+svg {
+  flex: 0 0 auto;
+  vertical-align: -0.15em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ---------- Bố cục ---------- */
+
+.shell {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 0 16px calc(var(--hit) + 24px + env(safe-area-inset-bottom));
+}
+
+/* Nav bar iOS: cao 44pt, chất liệu mờ, hairline dưới cùng */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  min-height: var(--hit);
+  background: color-mix(in srgb, var(--bg-grouped) 82%, transparent);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  box-shadow: inset 0 -0.5px 0 var(--separator);
+  margin: 0 -16px 16px;
+  padding: 6px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Tiêu đề nav bar: headline 17 semibold */
+.brand {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+/* Dùng đúng icon.svg (nguồn duy nhất của favicon/app icon) làm ảnh nền —
+   trước đây vẽ gradient riêng nên logo trên nav bar không giống favicon
+   thật (thiếu hình vòng tròn chia đôi). Next serve app/icon.svg tại
+   route /icon.svg nên gọi trực tiếp, không cần copy file. */
+.brand-mark {
+  display: inline-block;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background-image: url("/icon.svg");
+  background-size: cover;
+  margin-right: 2px;
+  flex: 0 0 auto;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.section {
+  margin-bottom: 28px;
+}
+
+/* Tiêu đề nhóm kiểu iOS Settings: chữ nhỏ, không in hoa hết, thụt 16px */
+.section-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 4px 8px;
+}
+
+.section-title {
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: -0.005em;
+  text-transform: none;
+  color: var(--label-secondary);
+  margin: 0;
+}
+
+/* Inset grouped list: nền nổi, bo 12, không viền, không bóng nặng */
+.card {
+  background: var(--bg-elevated);
+  border: none;
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-raised);
+  overflow: hidden;
+}
+
+.card-pad {
+  padding: 14px 16px;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.row-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ---------- Chữ & số ---------- */
+
+.num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  letter-spacing: -0.01em;
+}
+
+/* SF không có bản mono cho tiền: dùng tabular-nums của chính font hệ thống */
+.amount-lg {
+  font-size: 34px; /* largeTitle */
+  font-weight: 700;
+  letter-spacing: -0.037em;
+  line-height: 1.2;
+}
+
+.muted {
+  color: var(--label-secondary);
+}
+
+.faint {
+  color: var(--label-tertiary);
+  font-size: 15px; /* subheadline */
+}
+
+.tiny {
+  font-size: 13px; /* footnote */
+}
+
+.debt {
+  color: var(--red);
+}
+
+.credit {
+  color: var(--green);
+}
+
+h1 {
+  font-size: 34px; /* largeTitle */
+  font-weight: 700;
+  letter-spacing: -0.037em;
+  line-height: 1.15;
+  margin: 0 0 6px;
+}
+
+h2 {
+  font-size: 20px; /* title3 */
+  font-weight: 600;
+  letter-spacing: -0.024em;
+  margin: 0;
+}
+
+/* ---------- Nút ---------- */
+
+.btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: var(--hit); /* 44pt theo HIG */
+  border: none;
+  background: var(--fill-quaternary);
+  color: var(--tint-strong);
+  border-radius: var(--r-md);
+  padding: 0 16px;
+  font-size: 17px;
+  font-weight: 500;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-ios),
+    opacity var(--dur-fast) var(--ease-ios);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--fill-tertiary);
+}
+
+/* iOS phản hồi bằng mờ đi khi nhấn, không phóng to gây xô lệch layout */
+.btn:active:not(:disabled) {
+  opacity: 0.6;
+}
+
+.btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--tint-strong);
+  color: var(--label-on-tint);
+  font-weight: 600;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--tint-strong) 88%, black);
+}
+
+.btn-danger {
+  color: var(--red);
+  background: var(--red-wash);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--red-wash) 80%, var(--red));
+}
+
+.btn-block {
+  width: 100%;
+}
+
+/* Nút nhỏ trong dòng danh sách: 34pt là cỡ "small" của iOS */
+.btn-sm {
+  min-height: 34px;
+  padding: 0 12px;
+  font-size: 15px;
+  border-radius: var(--r-sm);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--tint-strong);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: var(--fill-quaternary);
+}
+
+/* Nút chỉ có icon: vẫn phải đủ 44x44 và phải kèm aria-label */
+.btn-icon {
+  min-width: var(--hit);
+  padding: 0;
+  border-radius: var(--r-pill);
+}
+
+.btn-icon.btn-sm {
+  min-width: 34px;
+}
+
+/* ---------- Form ---------- */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--label-secondary);
+}
+
+.input,
+.select,
+.textarea {
+  width: 100%;
+  min-height: var(--hit);
+  background: var(--bg-elevated);
+  color: var(--label);
+  border: 1px solid var(--separator);
+  border-radius: var(--r-md);
+  padding: 10px 12px;
+  font-size: 17px; /* 17px chặn iOS Safari tự zoom khi focus */
+  transition: border-color var(--dur-fast) var(--ease-ios),
+    box-shadow var(--dur-fast) var(--ease-ios);
+}
+
+/*
+  Input nằm trong .row thì nên co giãn để lấp đầy không gian, thay vì đòi
+  rộng 100% làm vỡ layout.
+*/
+.row > .input {
+  flex: 1;
+  width: auto;
+}
+
+.input:focus,
+.select:focus,
+.textarea:focus {
+  border-color: var(--tint);
+  outline: none;
+  box-shadow: 0 0 0 3.5px var(--tint-wash);
+}
+
+.select {
+  appearance: none;
+  padding-right: 30px;
+  /* Mũi nhọn xuống kiểu iOS, vẽ bằng SVG nội tuyến để không cần asset */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1.5 1.75 6 6.25l4.5-4.5' fill='none' stroke='%236d6d74' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 11px center;
+}
+
+.input-money {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  letter-spacing: -0.01em;
+}
+
+.textarea {
+  min-height: 92px;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.hint {
+  font-size: 13px; /* footnote */
+  line-height: 1.35;
+  color: var(--label-tertiary);
+}
+
+/* Banner trạng thái: icon + màu, không chỉ dựa vào màu để truyền tin */
+.error,
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  border: none;
+  border-radius: var(--r-lg);
+  padding: 12px 14px;
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.error {
+  background: var(--red-wash);
+  color: var(--red);
+}
+
+.notice {
+  background: var(--green-wash);
+  color: var(--green);
+}
+
+/* ---------- Chip / tag ---------- */
+
+.chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+  scroll-snap-type: x proximity;
+}
+
+.chips::-webkit-scrollbar {
+  display: none;
+}
+
+.chip {
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+  min-height: 34px;
+  border: none;
+  background: var(--fill-quaternary);
+  color: var(--label);
+  border-radius: var(--r-pill);
+  padding: 0 14px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--dur-fast) var(--ease-ios),
+    color var(--dur-fast) var(--ease-ios);
+}
+
+.chip:hover {
+  background: var(--fill-tertiary);
+}
+
+.chip[aria-pressed="true"] {
+  background: var(--tint-strong);
+  color: var(--label-on-tint);
+}
+
+/* Segmented control iOS: rãnh xám, "viên" trắng nổi lên ở mục đang chọn */
+.segmented {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 2px;
+  padding: 2px;
+  background: var(--fill-quaternary);
+  border-radius: var(--r-md);
+}
+
+.segment {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  border: none;
+  background: transparent;
+  color: var(--label-secondary);
+  border-radius: 8px;
+  padding: 0 8px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--dur-fast) var(--ease-ios),
+    color var(--dur-fast) var(--ease-ios);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.segment[aria-pressed="true"] {
+  background: var(--bg-elevated);
+  color: var(--label);
+  font-weight: 590;
+  box-shadow: var(--shadow-segment);
+}
+
+/* Máy rất hẹp thì chỉ còn icon. Nhãn vẫn ở lại trong DOM cho screen reader
+   nên không được dùng display:none — nút sẽ mất tên gọi. */
+@media (max-width: 380px) {
+  .segment span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+}
+
+/* Badge kiểu iOS: viên thuốc, chữ thường, không in hoa toàn bộ */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px; /* caption1 */
+  font-weight: 590;
+  letter-spacing: 0;
+  text-transform: none;
+  padding: 2px 8px;
+  border-radius: var(--r-pill);
+  background: var(--fill-tertiary);
+  color: var(--label-secondary);
+  white-space: nowrap;
+}
+
+.tag-blue {
+  background: var(--tint-wash);
+  color: var(--tint-strong);
+}
+
+/* ---------- Dòng danh sách ---------- */
+
+.ledger {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.entry {
+  position: relative;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 11px 16px;
+  min-height: var(--hit);
+  width: 100%;
+  background: none;
+  border: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-ios);
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Đường phân cách thụt vào 16px như list của iOS, không kéo hết chiều ngang.
+   Dùng selector con cháu vì .entry có nơi là <button>, có nơi là <div>. */
+.ledger > li + li .entry::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 0;
+  height: 1px;
+  background: var(--separator);
+  transform: scaleY(0.5); /* hairline thật trên màn hình Retina */
+  transform-origin: top;
+}
+
+.entry:hover {
+  background: var(--fill-quaternary);
+}
+
+.entry:active {
+  background: var(--fill-tertiary);
+}
+
+.entry-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.entry-title {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.entry-amount {
+  flex: 0 0 auto;
+  text-align: right;
+  font-weight: 590;
+}
+
+/* Mũi nhọn cho biết dòng bấm được — quy ước disclosure indicator của iOS */
+.entry-chevron {
+  color: var(--label-tertiary);
+  opacity: 0.6;
+}
+
+.date-rail {
+  flex: 0 0 38px;
+  text-align: center;
+}
+
+.date-rail .d {
+  font-variant-numeric: tabular-nums;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+
+.date-rail .m {
+  font-size: 11px; /* caption2 */
+  color: var(--label-tertiary);
+  letter-spacing: 0.02em;
+}
+
+/* ---------- Dải số dư ---------- */
+
+.balances {
+  padding: 2px 0;
+}
+
+.bal-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+  padding: 12px 16px;
+}
+
+.bal-row + .bal-row::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 0;
+  height: 1px;
+  background: var(--separator);
+  transform: scaleY(0.5);
+  transform-origin: top;
+}
+
+.bal-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.bal-name {
+  font-weight: 500;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bal-net {
+  font-weight: 590;
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Vạch 0 ở giữa, thanh mọc sang trái (nợ) hoặc phải (được nhận) */
+.bal-track {
+  position: relative;
+  height: 6px;
+  background: var(--fill-quaternary);
+  border-radius: var(--r-pill);
+  overflow: hidden;
+}
+
+.bal-track::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -2px;
+  bottom: -2px;
+  width: 1px;
+  background: var(--separator-opaque);
+  z-index: 1;
+}
+
+.bal-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: var(--r-pill);
+  transition: width var(--dur) var(--ease-ios);
+}
+
+.bal-fill.neg {
+  right: 50%;
+  background: var(--red);
+}
+
+.bal-fill.pos {
+  left: 50%;
+  background: var(--green);
+}
+
+/* ---------- Ô số liệu ---------- */
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  box-shadow: inset 0 0.5px 0 var(--separator);
+}
+
+.stat {
+  padding: 12px 16px;
+}
+
+.stat + .stat {
+  box-shadow: inset 0.5px 0 0 var(--separator);
+}
+
+.stat-label {
+  font-size: 13px; /* footnote, không in hoa */
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--label-secondary);
+  margin-bottom: 2px;
+}
+
+.stat-value {
+  font-weight: 590;
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* ---------- Tab bar iOS ---------- */
+
+.tabbar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  background: color-mix(in srgb, var(--bg-elevated) 80%, transparent);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  box-shadow: inset 0 0.5px 0 var(--separator);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.tabbar-inner {
+  max-width: 560px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+}
+
+/* iOS không dùng gạch chân cho tab đang chọn — chỉ đổi màu và tô đầy icon */
+.tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 49px; /* chiều cao tab bar tiêu chuẩn */
+  padding: 6px 4px;
+  font-size: 10px; /* nhãn tab của iOS */
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--label-tertiary);
+  text-decoration: none;
+  transition: color var(--dur-fast) var(--ease-ios);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tab[aria-current="page"] {
+  color: var(--tint-strong);
+}
+
+.tab svg {
+  width: var(--icon-tab);
+  height: var(--icon-tab);
+  vertical-align: baseline;
+}
+
+/* ---------- Trạng thái rỗng ---------- */
+
+.empty {
+  text-align: center;
+  padding: 40px 24px;
+  color: var(--label-secondary);
+}
+
+.empty-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--label);
+  margin-bottom: 4px;
+}
+
+/* ---------- Sheet ---------- */
+
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  animation: fade var(--dur-fast) var(--ease-ios);
+}
+
+.sheet {
+  position: relative;
+  background: var(--bg-elevated);
+  width: 100%;
+  max-width: 560px;
+  max-height: 88vh;
+  overflow-y: auto;
+  border-radius: var(--r-xl) var(--r-xl) 0 0;
+  box-shadow: var(--shadow-sheet);
+  padding: 26px 16px calc(20px + env(safe-area-inset-bottom));
+  animation: rise var(--dur) var(--ease-ios);
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Thanh nắm kéo của sheet iOS */
+.sheet::before {
+  content: "";
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 36px;
+  height: 5px;
+  border-radius: var(--r-pill);
+  background: var(--fill-tertiary);
+}
+
+@keyframes rise {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* ---------- Bảng chia tiền ---------- */
+
+.split-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 22px 1fr 96px;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  min-height: var(--hit);
+}
+
+.split-row + .split-row::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--separator);
+  transform: scaleY(0.5);
+  transform-origin: top;
+}
+
+.split-amount {
+  text-align: right;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+input[type="checkbox"] {
+  width: 22px;
+  height: 22px;
+  accent-color: var(--tint);
+  cursor: pointer;
+}
+
+/* ---------- Bong bóng chat kiểu iMessage ---------- */
+
+.bubbles {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.bubble {
+  max-width: 80%;
+  padding: 9px 14px;
+  border-radius: 20px;
+  font-size: 17px;
+  line-height: 1.3;
+  white-space: pre-wrap;
+}
+
+.bubble.me {
+  align-self: flex-end;
+  background: var(--tint-strong);
+  color: var(--label-on-tint);
+  border-bottom-right-radius: 6px;
+}
+
+.bubble.ai {
+  align-self: flex-start;
+  background: var(--fill-tertiary);
+  color: var(--label);
+  border-bottom-left-radius: 6px;
+}
+
+/* ---------- Lặt vặt ---------- */
+
+.divider {
+  height: 1px;
+  background: var(--separator);
+  transform: scaleY(0.5);
+  margin: 14px 0;
+}
+
+.link {
+  color: var(--tint-strong);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.code {
+  font-family: var(--mono);
+  background: var(--fill-tertiary);
+  border-radius: var(--r-sm);
+  padding: 2px 7px;
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  /* Đặt màu tường minh, không để thừa hưởng từ `.faint` (label-tertiary) —
+     trên nền fill-tertiary, label-tertiary mờ gần như biến mất trong dark
+     mode (mã mời nhìn như ô trống). label-secondary vẫn đủ tương phản. */
+  color: var(--label-secondary);
+}
+
+/* Tên biến môi trường nằm trong câu văn. Khác `.code` (dùng cho mã mời cần
+   đọc thành tiếng): không giãn chữ, cỡ nhỏ hơn để không phá nhịp dòng. */
+.code-inline {
+  font-family: var(--mono);
+  font-size: 0.92em;
+  background: var(--fill-tertiary);
+  border-radius: 5px;
+  padding: 1px 5px;
+  /* Đặt màu tường minh, không để thừa hưởng. Khối này thường nằm trong .hint
+     (label-tertiary) và chữ tertiary trên nền fill-tertiary chỉ còn 4.44:1 —
+     hụt ngưỡng 4.5:1 của WCAG cho chữ nhỏ. label-secondary đạt 7.47:1. */
+  color: var(--label-secondary);
+  /* Tên biến dài hơn màn hình hẹp thì cho ngắt giữa từ, tránh tràn ngang */
+  overflow-wrap: anywhere;
+}
+
+/* ---------- Bảng nhãn/giá trị (dl) ---------- */
+
+/* Khối chỉ đọc kiểu "Endpoint: …". Là <dl> chứ không phải <div> để screen
+   reader đọc đúng quan hệ nhãn–giá trị.
+
+   Xếp dọc (nhãn nhỏ trên, giá trị dưới) chứ không phải hai cột: hostname
+   gateway và tên model dài tới ~40 ký tự, ở cột hẹp 198px chúng bị ngắt giữa
+   từ thành hai dòng lệch. Cả chiều rộng card thì đọc liền mạch — đây cũng là
+   cách Settings của iOS trình bày các trường dài. */
+.kv {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+}
+
+.kv dt {
+  font-size: 13px; /* footnote */
+  color: var(--label-secondary);
+  margin-bottom: 1px;
+}
+
+.kv dd {
+  margin: 0;
+  font-size: 15px;
+  color: var(--label);
+}
+
+.kv-mono {
+  font-family: var(--mono);
+  font-size: 14px;
+  /* Hostname dài hơn card thì ngắt bất kỳ đâu — thà ngắt giữa từ còn hơn
+     tràn ngang làm cả trang cuộn được theo chiều ngang. */
+  overflow-wrap: anywhere;
+}
+
+.thumb {
+  width: 100%;
+  max-height: 220px;
+  object-fit: contain;
+  border-radius: var(--r-lg);
+  background: var(--fill-quaternary);
+}
+
+/* Chỉ đọc được bằng screen reader */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Vòng chờ dùng icon IconSpinner; animation để ở CSS để reduced-motion tắt được */
+.spinner {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* =========================================================================
+   Chart
+   -------------------------------------------------------------------------
+   Vẽ bằng SVG và div tay, không dùng thư viện. Mọi giá trị đều có bản chữ
+   đi kèm nên chart chỉ mang tính trực quan (aria-hidden trong TSX).
+   ========================================================================= */
+
+/* Dòng chữ giải thích dưới mỗi chart */
+.chart-note {
+  margin: 10px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--label-tertiary);
+}
+
+/* ---------- Donut hạng mục ---------- */
+
+.donut-wrap {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+/* Dưới 360px thì donut + legend cạnh nhau bị bóp — xếp dọc */
+@media (max-width: 360px) {
+  .donut-wrap {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+}
+
+.donut-fig {
+  position: relative;
+  flex: 0 0 auto;
+  align-self: center;
+  line-height: 0;
+}
+
+.donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  line-height: 1.1;
+  /* Chữ nằm trong lỗ donut, không được chắn chuột khỏi các cung */
+  pointer-events: none;
+}
+
+.donut-center-value {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--label);
+}
+
+.donut-center-label {
+  font-size: 11px;
+  color: var(--label-tertiary);
+}
+
+.legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.legend > li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  min-width: 0;
+}
+
+.legend-dot {
+  flex: 0 0 auto;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.legend-label {
+  color: var(--label);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.legend-value {
+  margin-left: auto;
+  flex: 0 0 auto;
+  color: var(--label-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Cột chi tiêu ---------- */
+
+.bars {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 92px;
+  /* Nhãn ngày tràn ra ngoài đáy khung, nên chừa chỗ bằng margin chứ không
+     phải padding — nhờ vậy `bottom: %` của vạch trung bình và chiều cao cột
+     cùng lấy mốc là 92px, hai thứ mới khớp nhau. */
+  margin-bottom: 16px;
+}
+
+.bar-col {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.bar {
+  width: 100%;
+  max-width: 22px;
+  background: var(--tint);
+  border-radius: 3px 3px 2px 2px;
+  /* Cột 0 đồng vẫn để lại một vạch mảnh, cho thấy ngày đó có tồn tại */
+  min-height: 2px;
+  transition: height var(--dur) var(--ease-ios);
+}
+
+.bar.peak {
+  background: var(--tint-strong);
+}
+
+/* Ngày không chi gì: vạch xám mảnh. Cùng màu xanh sẽ bị đọc nhầm thành có chi
+   một khoản rất nhỏ. */
+.bar.zero {
+  background: var(--fill-tertiary);
+  border-radius: 1px;
+}
+
+.bar-label {
+  position: absolute;
+  bottom: -16px;
+  font-size: 10px;
+  color: var(--label-tertiary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Vạch trung bình, `bottom` đặt theo % chiều cao khung cột (92px) */
+.bars-avg {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0;
+  /* Dùng label-tertiary chứ không phải separator: vạch này mang thông tin
+     (mức trung bình) nên phải đạt 3:1, màu đường kẻ hairline quá nhạt. */
+  border-top: 1px dashed var(--label-tertiary);
+  pointer-events: none;
+}
+
+/* ---------- Xếp hạng người ứng tiền ---------- */
+
+.rank {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.rank > li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.rank-num {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  border-radius: var(--r-pill);
+  background: var(--fill-tertiary);
+  color: var(--label-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rank-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.rank-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.rank-name {
+  font-size: 15px;
+  color: var(--label);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rank-value {
+  margin-left: auto;
+  flex: 0 0 auto;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--label);
+  font-variant-numeric: tabular-nums;
+}
+
+.rank-track {
+  display: block;
+  height: 6px;
+  border-radius: var(--r-pill);
+  background: var(--fill-quaternary);
+  overflow: hidden;
+}
+
+.rank-fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--r-pill);
+  background: var(--tint);
+  transition: width var(--dur) var(--ease-ios);
+}
+
+/* ---------- Sparkline xu hướng ---------- */
+
+.trend-head {
+  margin: 0 0 10px;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--label);
+}
+
+.spark {
+  display: block;
+  width: 100%;
+  height: 44px;
+}
+
+.spark-line {
+  fill: none;
+  stroke: var(--tint);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  /* preserveAspectRatio="none" kéo giãn cả nét — giữ nét dày thật 2px */
+  vector-effect: non-scaling-stroke;
+}
+
+.spark-area {
+  fill: var(--tint-wash);
+  stroke: none;
+}
+
+.spark-now {
+  stroke: var(--tint-strong);
+  stroke-width: 2;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.spark-scale {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  font-size: 10px;
+  color: var(--label-tertiary);
+}
+
+.spark-scale > li {
+  flex: 1 1 0;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Kỳ đang xem in đậm — mốc để đọc các kỳ còn lại */
+.spark-scale > li.now {
+  color: var(--label);
+  font-weight: 600;
+}

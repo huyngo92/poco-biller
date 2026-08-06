@@ -1,0 +1,31 @@
+node_modules
+.next
+out
+build
+dist
+
+# Biến môi trường — không bao giờ commit secret (API key, service account...)
+.env
+.env.local
+.env.*.local
+.env.production
+
+# Database SQLite tự tạo lúc chạy, không phải source code
+data/*.db
+data/*.db-journal
+data/*.db-wal
+data/*.db-shm
+data/backups
+
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+next-env.d.ts
+tsconfig.tsbuildinfo
+.vercel
+
+# IDE
+.vscode/*
+!.vscode/extensions.json
+.idea
