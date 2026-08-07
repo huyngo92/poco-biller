@@ -387,22 +387,27 @@ export default function BillForm({
       )}
 
       {infoValid && (
-        <button
-          type="button"
-          className="btn btn-primary btn-block"
-          onClick={save}
-          disabled={busy || !canSave}
-        >
-          {busy ? (
-            <>
-              <IconSpinner size={ICON_SIZE.md} /> Đang lưu
-            </>
-          ) : (
-            <>
-              <IconCheck size={ICON_SIZE.md} /> Lưu bill
-            </>
-          )}
-        </button>
+        <>
+          <div className="progress-bar" style={busy ? { opacity: 1 } : { opacity: 0, pointerEvents: 'none', transition: 'opacity 0.2s ease' }}>
+            <div className="progress-bar-fill" style={{ width: busy ? '100%' : '0%', animation: busy ? 'none' : undefined }}></div>
+          </div>
+          <button
+            type="button"
+            className="btn btn-primary btn-block"
+            onClick={save}
+            disabled={busy || !canSave}
+          >
+            {busy ? (
+              <>
+                <IconSpinner size={ICON_SIZE.md} /> Đang lưu
+              </>
+            ) : (
+              <>
+                <IconCheck size={ICON_SIZE.md} /> Lưu bill
+              </>
+            )}
+          </button>
+        </>
       )}
     </div>
   );

@@ -195,6 +195,13 @@ export default function Reminders({
 
   useEffect(() => setGroup(resolveGroup(groups)), [groups]);
 
+  // Load reminders khi group được xác định
+  useEffect(() => {
+    if (group?.id) {
+      void loadReminders(group.id);
+    }
+  }, [group?.id, loadReminders]);
+
   const loadReminders = useCallback(async (groupId: number) => {
     setLoading(true);
     setError("");

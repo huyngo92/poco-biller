@@ -993,11 +993,26 @@ h2 {
 .split-row {
   position: relative;
   display: grid;
-  grid-template-columns: 22px 1fr 96px;
+  grid-template-columns: 22px 1fr minmax(60px, 100px);
   align-items: center;
   gap: 10px;
   padding: 10px 0;
   min-height: var(--hit);
+}
+
+/* Trên mobile hẹp, input cuối xếp xuống dòng để tránh tràn */
+@media (max-width: 380px) {
+  .split-row {
+    grid-template-columns: 22px 1fr;
+    gap: 8px;
+  }
+
+  .split-row span:last-child,
+  .split-row input:last-child,
+  .split-row > span:nth-child(3) {
+    grid-column: 2;
+    margin-top: 4px;
+  }
 }
 
 .split-row + .split-row::before {
@@ -1162,7 +1177,11 @@ input[type="checkbox"] {
   border: 0;
 }
 
-/* Vòng chờ dùng icon IconSpinner; animation để ở CSS để reduced-motion tắt được */
+/* =========================================================================
+   Loading Patterns — từ QC OneHub design system
+   ========================================================================= */
+
+/* Vòng chờ ring (cải thiện từ cũ) */
 .spinner {
   animation: spin 0.8s linear infinite;
 }
@@ -1170,6 +1189,201 @@ input[type="checkbox"] {
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+/* Loading dots — ba chấm nhảy */
+.loading-dots {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.loading-dots .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--tint-strong);
+  animation: dotPulse 1.2s ease-in-out infinite;
+}
+
+.loading-dots .dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.loading-dots .dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+.loading-dots.sm .dot {
+  width: 5px;
+  height: 5px;
+}
+
+@keyframes dotPulse {
+  0%, 80%, 100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Pulse — dấu hiệu trạng thái (thở nhẹ) */
+.pulse {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--tint-strong);
+  animation: pulse 1.8s ease-in-out infinite;
+}
+
+.pulse.ok {
+  background: var(--green);
+}
+
+.pulse.err {
+  background: var(--red);
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(0, 122, 255, 0.4);
+  }
+  50% {
+    opacity: 0.7;
+    box-shadow: 0 0 0 8px rgba(0, 122, 255, 0);
+  }
+}
+
+/* Progress bar — thanh tiến độ */
+.progress-bar {
+  width: 100%;
+  height: 6px;
+  background: var(--fill-quaternary);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--tint-strong);
+  transition: width 0.3s ease;
+}
+
+.progress-bar-fill.ok {
+  background: var(--green);
+}
+
+.progress-bar-fill.err {
+  background: var(--red);
+}
+
+/* Skeleton loading — placeholder xám nhấp nháy */
+.skeleton {
+  background: var(--fill-tertiary);
+  border-radius: var(--r-sm);
+  animation: shimmer 1.5s ease-in-out infinite;
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, var(--bg-elevated) 50%, transparent 100%);
+  animation: shimmerSlide 1.5s ease-in-out infinite;
+}
+
+.skeleton-line {
+  height: 12px;
+  margin-bottom: 10px;
+}
+
+.skeleton-line:last-child {
+  margin-bottom: 0;
+}
+
+@keyframes shimmer {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+@keyframes shimmerSlide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* Typing indicator — dấu chữ đang gõ kiểu chat */
+.typing-indicator {
+  display: inline-flex;
+  gap: 3px;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--fill-quaternary);
+  border-radius: 16px;
+}
+
+.typing-indicator .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--label-secondary);
+  animation: typingBounce 1.3s ease-in-out infinite;
+}
+
+.typing-indicator .dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.typing-indicator .dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes typingBounce {
+  0%, 60%, 100% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(-6px);
+  }
+}
+
+/* Loading text — chữ "Đang tải" với spinner nhỏ */
+.loading-text {
+  font-size: 13px;
+  color: var(--label-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.loading-text::after {
+  content: '';
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--fill-tertiary);
+  border-top-color: var(--tint-strong);
+  animation: spin 0.7s linear infinite;
+}
+
+/* Reduced motion: tắt hết animation */
+@media (prefers-reduced-motion: reduce) {
+  .spinner,
+  .loading-dots .dot,
+  .pulse,
+  .progress-bar-fill,
+  .skeleton,
+  .skeleton::after,
+  .typing-indicator .dot {
+    animation: none !important;
   }
 }
 

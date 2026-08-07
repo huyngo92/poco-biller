@@ -27,10 +27,9 @@ export function computeBalances(
     for (const s of b.shares) bump(owed, s.userId, s.amount);
   }
 
-  // Người trả nợ coi như đã "ứng" thêm; người nhận coi như đã được hoàn.
+  // Settlement giảm nợ của người thanh toán, không phải tăng tiền ứng.
   for (const s of settlements) {
-    bump(paid, s.fromUserId, s.amount);
-    bump(paid, s.toUserId, -s.amount);
+    bump(owed, s.fromUserId, s.amount);
   }
 
   return members.map((m) => {
