@@ -82,7 +82,7 @@ NODE_EXTRA_CA_CERTS=/duong/dan/ca-noi-bo.pem npm run dev
 
 Biến này **phải ở dòng lệnh**. Ghi vào `.env` sẽ không có tác dụng vì Node đọc nó lúc dựng tiến trình, trước khi Next kịp nạp `.env`. Chạy production bằng systemd thì đặt trong `Environment=`, bằng Docker thì `-e`, bằng pm2 thì trong `env` của file cấu hình.
 
-Đừng dùng `NODE_TLS_REJECT_UNAUTHORIZED=0` cho nhanh. Nó tắt kiểm tra chứng chỉ cho mọi kết nối của app, kể cả khi đẩy backup lên Google Drive, nên bất kỳ ai chen được vào giữa cũng đọc và sửa được dữ liệu bill của nhóm. Nếu chính sách không cho lấy file CA, cách sạch hơn là nhờ IT đưa tên miền gateway vào danh sách miễn quét.
+Đừng dùng `NODE_TLS_REJECT_UNAUTHORIZED=0` cho nhanh. Nó tắt kiểm tra chứng chỉ cho mọi kết nối của app, kể cả khi đẩy backup lên GitHub, nên bất kỳ ai chen được vào giữa cũng đọc và sửa được dữ liệu bill của nhóm. Nếu chính sách không cho lấy file CA, cách sạch hơn là nhờ IT đưa tên miền gateway vào danh sách miễn quét.
 
 Hai mã lỗi họ hàng cần phân biệt: `DEPTH_ZERO_SELF_SIGNED_CERT` là chính máy chủ tự ký chứng chỉ cho nó — bình thường với gateway nội bộ, chữa cũng bằng `NODE_EXTRA_CA_CERTS`. Còn `CERT_HAS_EXPIRED` trên một dịch vụ công khai thì hãy nghi đồng hồ máy chạy app bị lệch ngày trước khi nghi chứng chỉ.
 
@@ -90,33 +90,62 @@ Khi gateway trả lỗi, app ghép nội dung lỗi của nó vào thông báo �
 
 ## Sao lưu
 
-Tab Cài đặt có ba nút tải về: JSON đầy đủ để phục hồi, CSV bill (mỗi dòng là phần của một người trong một bill, dễ pivot trong Excel), và CSV các khoản đã trả nhau. CSV có BOM nên Excel tiếng Việt mở đúng dấu.
+Tab Cài đặt có hai nút tải về: CSV bill (mỗi dòng là phần của một người trong một bill, dễ pivot trong Excel) và CSV các khoản đã trả nhau. CSV có BOM nên Excel tiếng Việt mở đúng dấu. Đây là bản tải để xem/lưu trữ — app không hỗ trợ nhập ngược file này trở lại (không có tính năng import), tránh rủi ro dữ liệu trùng hoặc sai lệch do sửa file thủ công.
 
-Nhập lại từ JSON ghép thành viên theo email. Bill trùng ngày, tên và số tiền sẽ được bỏ qua, nên nhập lại nhiều lần vẫn an toàn không sinh bill trùng.
+### Backup DB lên GitHub
 
-### Backup CSV lên Google Drive
+Không cần Google Drive hay service account — chỉ cần một Personal Access Token của GitHub, dùng được cả với tài khoản Gmail cá nhân.
 
-Cần một service account. Vào Google Cloud Console, tạo project, bật Google Drive API, tạo service account rồi tạo key dạng JSON. Sau đó tạo một thư mục trên Drive và share thư mục đó cho email của service account với quyền Editor — bước này bắt buộc, thiếu nó thì upload sẽ báo lỗi quyền.
-
-Lấy folder ID từ URL thư mục (`drive.google.com/drive/folders/<ID>`) rồi điền vào `.env`:
+Vào github.com/settings/tokens, tạo token (classic: tick quyền `repo` — chú ý phải là `repo` đầy đủ, không phải `public_repo`, nếu repo đích là riêng tư `public_repo` sẽ không vào được; fine-grained: ở "Repository access" chọn đúng repo đích hoặc "All repositories", rồi cấp quyền Contents → Read and write). Chọn hoặc tạo một repo để chứa bản backup, có thể là repo riêng tư. Điền vào `.env`:
 
 ```
-GOOGLE_DRIVE_FOLDER_ID=1a2b3c...
-GOOGLE_SERVICE_ACCOUNT_EMAIL=poco@project.iam.gserviceaccount.com
-GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIE...\n-----END PRIVATE KEY-----\n"
+GITHUB_BACKUP_TOKEN=ghp_...
+GITHUB_BACKUP_REPO=ten-tai-khoan/ten-repo
 ```
 
-Private key giữ nguyên các `\n` như trong file JSON. Xong thì tab Cài đặt hiện nút sao lưu ngay, kèm lịch sử tám lần gần nhất.
+App tự tạo một nhánh riêng tên `backup-data` (dựa trên nhánh `main` hoặc `master` hiện có của repo) để chứa file backup, không đụng tới code trên nhánh chính. Nếu repo đích hoàn toàn trống (chưa có commit nào) thì GitHub chưa có nhánh mặc định để app dựa vào — hãy tạo ít nhất một commit (ví dụ một README) trong repo trước khi dùng.
 
-### Tự động hàng ngày
+Với repo riêng tư, GitHub trả lời như thể repo không tồn tại (404) nếu token không đủ quyền, y hệt trường hợp gõ sai tên repo — nên nếu báo lỗi "không truy cập được repo" thì việc đầu tiên cần kiểm tra là quyền của token, không phải tên repo.
 
-Đặt `CRON_SECRET` trong `.env` rồi gọi endpoint mỗi ngày. Trên máy Linux hoặc macOS, thêm vào crontab bằng `crontab -e`:
+Backup không có nút bấm trong giao diện — nó chạy hoàn toàn tự động theo lịch, xem mục dưới. Chỉ sao lưu file `.db`, không sao lưu CSV: CSV chỉ để người dùng tải về xem, còn khôi phục sau khi build lại thì cần đúng file DB.
+
+Bản sao lưu được lấy bằng SQLite backup API (`snapshotDb` trong `src/lib/db.ts`) chứ không đọc thô file `.db`. Lý do quan trọng: DB chạy chế độ WAL nên dữ liệu mới nằm trong file `-wal` cho tới khi checkpoint, và `wal_checkpoint(TRUNCATE)` sẽ âm thầm bỏ qua khi còn kết nối khác đang đọc — đọc thô lúc đó cho ra file gần như rỗng. App còn mở lại bản snapshot kiểm tra có bảng `bills` trước khi đẩy lên, để không bao giờ lưu một bản backup rỗng.
+
+### Đặt lịch tự động: `BACKUP_CRON`
+
+Lịch backup khai bằng một biến trong `.env`, không cần crontab của máy:
 
 ```
-0 23 * * * curl -fsS -H "x-cron-secret: MA_BI_MAT_CUA_BAN" http://localhost:3000/api/cron/backup
+BACKUP_CRON=0 23 * * *
 ```
 
-Dòng trên chạy 23:00 mỗi ngày, sao lưu CSV của toàn bộ nhóm lên Drive. Trên Vercel thì dùng Vercel Cron trỏ tới cùng đường dẫn. Endpoint trả 401 nếu sai mã và 503 nếu chưa đặt `CRON_SECRET`, nên để trống biến này là tính năng tự tắt.
+Năm trường theo thứ tự `phút giờ ngày-trong-tháng tháng thứ`, tính theo giờ địa phương của máy chạy app. `0 23 * * *` là 23:00 mỗi ngày; `30 2 * * 1` là 02:30 mỗi thứ Hai (0 là Chủ nhật); `0 */6 * * *` là mỗi 6 tiếng. Để trống biến này thì backup tự động tắt.
+
+Lịch gõ sai cú pháp sẽ khiến app in lỗi ra terminal và **không** chạy backup, thay vì âm thầm chạy sai. Đây là lựa chọn có chủ ý: với một tính năng backup thì lịch sai mà vẫn im lặng là kiểu lỗi tệ nhất — mọi thứ trông bình thường cho tới hôm cần khôi phục mới biết chẳng có bản nào. Khi lịch hợp lệ, lúc khởi động app in ra dòng như `[poco-biller] Backup DB tự động: 23:00 mỗi ngày.` — nếu không thấy dòng này thì scheduler chưa chạy.
+
+Cơ chế hẹn giờ nằm trong tiến trình app: `getDb()` trong `src/lib/db.ts` gọi `startBackupScheduler` lần đầu có request đụng tới DB. Nên nó cần một tiến trình sống lâu: `npm start`, pm2, Docker, systemd. Trên Vercel serverless thì vô dụng vì tiến trình không sống qua các lần gọi — ở đó dùng Vercel Cron trỏ tới `/api/cron/backup`.
+
+Chỗ này trông hơi lạ nên ghi lại lý do: cách đúng sách là dùng hook `register()` của `src/instrumentation.ts`, nhưng Next biên dịch file đó cho cả edge runtime và webpack trace **cả** `await import()`, nên mọi đường dẫn từ instrumentation tới `db.ts` đều kéo `better-sqlite3` vào bundle edge và vỡ với `Module not found: Can't resolve 'fs'`. Guard `NEXT_RUNTIME` không cứu được vì nó chỉ tác động lúc chạy, còn lỗi xảy ra lúc build. Gắn vào `getDb()` là chắc chắn vì đó là điểm vào duy nhất của DB và chỉ tồn tại ở Node runtime.
+
+**`CRON_SECRET` là mật khẩu bảo vệ endpoint, không phải lịch chạy.** Nó chỉ cần khi muốn gọi backup từ bên ngoài (Vercel Cron, hoặc gọi tay để thử). Sinh một chuỗi ngẫu nhiên:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(24).toString('hex'))"
+```
+
+Rồi khai vào `.env` và gọi:
+
+```bash
+curl -fsS -H "x-cron-secret: CHUOI_NGAU_NHIEN_VUA_SINH" http://localhost:3000/api/cron/backup
+```
+
+Endpoint trả 401 nếu sai mã và 503 nếu chưa đặt `CRON_SECRET` hoặc chưa cấu hình GitHub, nên để trống là tính năng tự tắt. Đã có `BACKUP_CRON` thì không cần `CRON_SECRET`.
+
+Muốn thử ngay không cần chờ tới giờ, gọi đúng dòng curl trên — nó trả về tên file và dung lượng, ví dụ `{"file":"poco-db-2026-08-07.sqlite","sizeKB":148}`. Nếu `sizeKB` chỉ vài KB thì DB đang thật sự rỗng, cần kiểm tra lại trước khi tin vào bản backup đó.
+
+### Phục hồi DB khi build lại
+
+Mỗi lần chạy `npm run build` hoặc `npm start`, script `scripts/restore-db.mjs` tự chạy trước (`prebuild`/`prestart`). Nếu file DB local (`DATABASE_PATH`) chưa tồn tại — ví dụ vừa deploy lên một máy chủ mới, ổ đĩa bị xoá, hoặc container khởi tạo lại từ đầu — script sẽ tự tìm bản `poco-db-*.sqlite` mới nhất trên nhánh `backup-data` của repo GitHub và tải về đúng vị trí đó. Nếu DB đã có sẵn thì script bỏ qua, không ghi đè. Cần đặt `GITHUB_BACKUP_TOKEN`/`GITHUB_BACKUP_REPO` trước khi build để bước này hoạt động.
 
 ## Kiểm tra logic tiền tệ
 
@@ -124,16 +153,17 @@ Dòng trên chạy 23:00 mỗi ngày, sao lưu CSV của toàn bộ nhóm lên D
 npm test
 ```
 
-Chạy 110 kiểm tra không cần server: đọc số tiền viết tắt kiểu Việt (`150k`, `1tr2`, `1,5 triệu`, `250.000`), chia tiền luôn khớp tổng qua 100 lần thử ngẫu nhiên, tổng số dư cả nhóm luôn bằng 0, số giao dịch gợi ý không vượt số người trừ một, ghép URL endpoint AI từ cả ba dạng viết, thông báo lỗi mạng chỉ đúng nguyên nhân, phân biệt proxy cắt TLS với chứng chỉ nội bộ, đọc được phản hồi dạng stream, sinh đúng URL QR chuyển khoản, và bí mật không lọt ra thông báo lỗi.
+Chạy 124 kiểm tra không cần server: đọc số tiền viết tắt kiểu Việt (`150k`, `1tr2`, `1,5 triệu`, `250.000`), chia tiền luôn khớp tổng qua 100 lần thử ngẫu nhiên, tổng số dư cả nhóm luôn bằng 0, số giao dịch gợi ý không vượt số người trừ một, ghép URL endpoint AI từ cả ba dạng viết, thông báo lỗi mạng chỉ đúng nguyên nhân, phân biệt proxy cắt TLS với chứng chỉ nội bộ, đọc được phản hồi dạng stream, sinh đúng URL QR chuyển khoản, bí mật không lọt ra thông báo lỗi, và lịch `BACKUP_CRON` khớp đúng thời điểm — kể cả luật ngày/thứ của cron, chỗ mà một lịch hằng tuần rất dễ âm thầm biến thành hằng ngày.
 
 ## Cấu trúc
 
 ```
-src/lib/          money, balance, period, queries, auth, backup, drive, claude, qr
+src/lib/          money, balance, period, queries, auth, backup, github-backup,
+                  claude, qr, db, cron-expr, scheduler
 src/app/api/      route handler cho auth, groups, bills, settlements, ai, cron
 src/app/          4 trang: sổ bill, thêm bill, nhắc nợ, cài đặt
 src/components/   BillForm, BillSheet, TabBar, CopyButton, CopyImageButton, Icons
-scripts/          test-logic.mjs
+scripts/          test-logic.mjs, restore-db.mjs
 data/poco.db      SQLite, tự tạo, đã có trong .gitignore
 ```
 

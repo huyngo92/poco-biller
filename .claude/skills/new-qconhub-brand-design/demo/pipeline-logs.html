@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QC OneHub — Pipeline + Expandable Logs Demo</title>
+  <link rel="stylesheet" href="../assets/tokens.css">
+  <link rel="stylesheet" href="../assets/components.css">
+  <style>
+    .page-wrap { max-width: 900px; margin: 0 auto; padding: 32px 24px 80px; }
+    .section { margin-top: 40px; }
+    .section-title {
+      font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.14em; color: var(--dim);
+      margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--rule);
+    }
+    .hint { font-size: 12px; color: var(--muted); margin-bottom: 14px; }
+
+    /* ── Expandable pipeline step ──
+       Extends .pipeline-step with a toggle chevron + collapsible log panel. */
+    .pipeline-step-header {
+      display: flex; align-items: center; gap: 14px; cursor: pointer;
+      user-select: none;
+    }
+    .pipeline-step-header:hover .pipeline-step-title { color: var(--brand); }
+    .pipeline-step-toggle {
+      margin-left: auto; flex-shrink: 0;
+      width: 22px; height: 22px; border-radius: var(--radius-sm);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--dim); background: transparent; border: none; cursor: pointer;
+      transition: transform 0.18s ease, background 0.12s ease, color 0.12s ease;
+    }
+    .pipeline-step-toggle:hover { background: var(--bg-2); color: var(--ink-2); }
+    .pipeline-step-toggle svg { width: 12px; height: 12px; transition: transform 0.18s ease; }
+    .pipeline-step.expanded .pipeline-step-toggle svg { transform: rotate(180deg); }
+
+    .pipeline-step-logbox {
+      display: grid; grid-template-rows: 0fr; opacity: 0;
+      transition: grid-template-rows 0.22s ease, opacity 0.18s ease, margin 0.22s ease;
+      margin-top: 0;
+    }
+    .pipeline-step.expanded .pipeline-step-logbox {
+      grid-template-rows: 1fr; opacity: 1; margin-top: 10px;
+    }
+    .pipeline-step-logbox > .log-console-inner { overflow: hidden; min-height: 0; }
+
+    /* Nested log console, sized down for inline use inside a step */
+    .step-log-console {
+      background: var(--inverse-bg); color: #D8D7DC;
+      border-radius: var(--radius-sm); padding: 12px 14px;
+      font-family: var(--font-mono); font-size: 12px; line-height: 1.65;
+      max-height: 220px; overflow-y: auto;
+    }
+    .step-log-console .log-line { display: flex; gap: 10px; white-space: pre-wrap; word-break: break-all; }
+    .step-log-console .log-line .ts { color: #6E6C74; flex-shrink: 0; }
+    .step-log-console .log-line .lvl { flex-shrink: 0; font-weight: 700; width: 44px; }
+    .step-log-console .log-line.info .lvl { color: #3B8FD4; }
+    .step-log-console .log-line.ok   .lvl { color: #4CAF63; }
+    .step-log-console .log-line.warn .lvl { color: #F5903A; }
+    .step-log-console .log-line.err  .lvl { color: #F25A5A; }
+
+    /* Live-tail cursor for the currently-running step */
+    .live-cursor {
+      display: inline-block; width: 6px; height: 12px; background: #4CAF63;
+      margin-left: 2px; vertical-align: middle;
+      animation: cursorBlink 1s step-end infinite;
+    }
+    @keyframes cursorBlink { 50% { opacity: 0; } }
+
+    .step-log-toolbar {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 8px; gap: 10px;
+    }
+    .step-log-meta {
+      font-family: var(--font-mono); font-size: 10px; color: var(--dim);
+      text-transform: uppercase; letter-spacing: 0.06em;
+    }
+    .step-log-actions { display: flex; gap: 6px; }
+    .icon-btn {
+      width: 24px; height: 24px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border-strong); background: var(--surface);
+      color: var(--muted); cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: border-color 0.1s ease, color 0.1s ease, background 0.1s ease;
+    }
+    .icon-btn:hover { border-color: var(--brand); color: var(--brand); background: var(--brand-soft); }
+    .icon-btn svg { width: 13px; height: 13px; }
+
+    .live-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-family: var(--font-mono); font-size: 9px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--ok); background: var(--ok-soft);
+      padding: 2px 7px; border-radius: var(--radius-sm);
+      border: 1px solid rgba(46,139,61,0.18);
+    }
+    .live-badge .live-dot {
+      width: 5px; height: 5px; border-radius: 50%; background: var(--ok);
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+    /* "Expand all" control */
+    .pipeline-toolbar {
+      display: flex; justify-content: flex-end; margin-bottom: 10px;
+    }
+
+    /* ── Horizontal variant ──
+       Columns are too narrow (min-width 120px) to expand a log panel inline
+       under each step without breaking row alignment. Pattern instead: click
+       a step to select it, log renders in one shared panel below the row. */
+    .pipeline-steps.horizontal .pipeline-step.done,
+    .pipeline-steps.horizontal .pipeline-step.active,
+    .pipeline-steps.horizontal .pipeline-step.error {
+      cursor: pointer;
+    }
+    .pipeline-steps.horizontal .pipeline-step-dot {
+      transition: box-shadow 0.15s ease, transform 0.15s ease;
+    }
+    .pipeline-steps.horizontal .pipeline-step.selected .pipeline-step-dot {
+      box-shadow: 0 0 0 4px var(--brand-tint);
+      transform: scale(1.08);
+    }
+    .pipeline-steps.horizontal .pipeline-step.selected .pipeline-step-title {
+      color: var(--brand);
+    }
+    .horizontal-log-panel { margin-top: 18px; }
+    .horizontal-log-panel .step-log-console { max-height: 240px; }
+  </style>
+</head>
+<body>
+
+<div class="brand-top-accent"></div>
+<button class="btn ghost sm" onclick="var h=document.documentElement; h.classList.toggle('dark'); h.classList.toggle('light', !h.classList.contains('dark'));" style="position:fixed;top:10px;right:20px;z-index:200;">☀ / ☾ Dark</button>
+
+<header class="app-header">
+  <div class="app-header-brand">
+    <div class="app-header-logo">QC</div>
+    <div class="app-header-text">
+      <div class="app-header-title">OneHub <em>Pipeline + Logs</em></div>
+      <div class="app-header-sub"><strong>DevOps</strong> <span class="sep">·</span> <strong>deploy-prod-v2.4.1</strong> <span class="sep">·</span> <strong>#482</strong></div>
+    </div>
+  </div>
+</header>
+
+<div class="page-wrap">
+
+  <div class="section" style="margin-top:24px;">
+    <div class="section-title">Pipeline (expandable step logs)</div>
+    <div class="hint">Click vào từng step (hoặc icon chevron) để mở/đóng log của step đó. Step "active" tự cuộn xuống dòng log mới nhất và có con trỏ nhấp nháy; step "done" xem log đã chạy xong; step "error" mở sẵn để lộ lỗi ngay.</div>
+
+    <div class="pipeline-toolbar">
+      <button class="btn ghost sm" onclick="toggleAll()">Mở/Đóng tất cả</button>
+    </div>
+
+    <div class="panel">
+      <div class="panel-body">
+        <div class="pipeline-steps" id="pipeline">
+
+          <!-- Step 1: done, collapsed by default -->
+          <div class="pipeline-step done" data-step="1">
+            <div class="pipeline-step-dot">✓</div>
+            <div class="pipeline-step-body">
+              <div class="pipeline-step-header" onclick="toggleStep(this)">
+                <div>
+                  <div class="pipeline-step-title">Checkout source</div>
+                  <div class="pipeline-step-meta"><span class="mono">main@a3f21c9</span> · 4s</div>
+                </div>
+                <button class="pipeline-step-toggle" aria-label="Mở rộng log">
+                  <svg viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+              </div>
+              <div class="pipeline-step-logbox">
+                <div class="log-console-inner">
+                  <div class="step-log-console">
+                    <div class="step-log-toolbar">
+                      <span class="step-log-meta">4 dòng log · hoàn tất trong 4s</span>
+                      <div class="step-log-actions">
+                        <button class="icon-btn" aria-label="Sao chép log" onclick="event.stopPropagation()">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                        </button>
+                      </div>
+                    </div>
+                    <div class="log-line info"><span class="ts">17:22:58</span><span class="lvl">INFO</span><span>Cloning repository qc-onehub/cicd-app...</span></div>
+                    <div class="log-line info"><span class="ts">17:22:59</span><span class="lvl">INFO</span><span>Checking out main@a3f21c9</span></div>
+                    <div class="log-line ok"><span class="ts">17:23:01</span><span class="lvl">OK</span><span>Working tree clean, HEAD at a3f21c9</span></div>
+                    <div class="log-line ok"><span class="ts">17:23:02</span><span class="lvl">OK</span><span>Checkout completed in 4s</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 2: done, collapsed -->
+          <div class="pipeline-step done" data-step="2">
+            <div class="pipeline-step-dot">✓</div>
+            <div class="pipeline-step-body">
+              <div class="pipeline-step-header" onclick="toggleStep(this)">
+                <div>
+                  <div class="pipeline-step-title">Build image</div>
+                  <div class="pipeline-step-meta"><span class="mono">docker build</span> · 1m 12s</div>
+                </div>
+                <button class="pipeline-step-toggle" aria-label="Mở rộng log">
+                  <svg viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+              </div>
+              <div class="pipeline-step-logbox">
+                <div class="log-console-inner">
+                  <div class="step-log-console">
+                    <div class="step-log-toolbar">
+                      <span class="step-log-meta">6 dòng log · hoàn tất trong 1m 12s</span>
+                      <div class="step-log-actions">
+                        <button class="icon-btn" aria-label="Sao chép log" onclick="event.stopPropagation()">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                        </button>
+                      </div>
+                    </div>
+                    <div class="log-line info"><span class="ts">17:23:03</span><span class="lvl">INFO</span><span>Building Dockerfile with BuildKit...</span></div>
+                    <div class="log-line info"><span class="ts">17:23:15</span><span class="lvl">INFO</span><span>Step 3/9: RUN npm ci --production</span></div>
+                    <div class="log-line info"><span class="ts">17:24:02</span><span class="lvl">INFO</span><span>Step 7/9: COPY --from=build /app/dist ./dist</span></div>
+                    <div class="log-line ok"><span class="ts">17:24:11</span><span class="lvl">OK</span><span>Image built: registry.onehub.internal/app:v2.4.1 (312MB)</span></div>
+                    <div class="log-line info"><span class="ts">17:24:13</span><span class="lvl">INFO</span><span>Pushing to registry.onehub.internal...</span></div>
+                    <div class="log-line ok"><span class="ts">17:24:15</span><span class="lvl">OK</span><span>Push completed in 1m 12s</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 3: active, expanded by default, live-tailing -->
+          <div class="pipeline-step active expanded" data-step="3">
+            <div class="pipeline-step-dot">3</div>
+            <div class="pipeline-step-body">
+              <div class="pipeline-step-header" onclick="toggleStep(this)">
+                <div>
+                  <div class="pipeline-step-title">Deploy to Production</div>
+                  <div class="pipeline-step-meta">Rolling update · đang chạy…</div>
+                </div>
+                <button class="pipeline-step-toggle" aria-label="Thu gọn log">
+                  <svg viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+              </div>
+              <div class="pipeline-step-logbox">
+                <div class="log-console-inner">
+                  <div class="step-log-console" id="live-log">
+                    <div class="step-log-toolbar">
+                      <span class="live-badge"><span class="live-dot"></span> Live</span>
+                      <div class="step-log-actions">
+                        <button class="icon-btn" aria-label="Sao chép log" onclick="event.stopPropagation()">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                        </button>
+                      </div>
+                    </div>
+                    <div id="live-log-lines">
+                      <div class="log-line info"><span class="ts">17:24:16</span><span class="lvl">INFO</span><span>Starting rolling update: deploy-prod-v2.4.1</span></div>
+                      <div class="log-line info"><span class="ts">17:24:18</span><span class="lvl">INFO</span><span>Pulling image registry.onehub.internal/app:v2.4.1</span></div>
+                      <div class="log-line ok"><span class="ts">17:24:20</span><span class="lvl">OK</span><span>Pod onehub-app-7d9f8-1 scheduled on node-03</span></div>
+                      <div class="log-line warn"><span class="ts">17:24:22</span><span class="lvl">WARN</span><span>Readiness probe slow to respond (2.1s), retrying...</span></div>
+                      <div class="log-line ok"><span class="ts">17:24:25</span><span class="lvl">OK</span><span>Pod onehub-app-7d9f8-1 is Ready (1/3)</span></div>
+                    </div>
+                    <div class="log-line info" id="live-log-cursor-line"><span class="ts">17:24:26</span><span class="lvl">INFO</span><span>Waiting for pod 2/3<span class="live-cursor"></span></span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 4: pending, disabled toggle -->
+          <div class="pipeline-step" data-step="4">
+            <div class="pipeline-step-dot">4</div>
+            <div class="pipeline-step-body">
+              <div class="pipeline-step-header" style="cursor:default;">
+                <div>
+                  <div class="pipeline-step-title" style="color:var(--faint);">Smoke test</div>
+                  <div class="pipeline-step-meta" style="color:var(--faint);">Đang chờ</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Error step example -->
+  <div class="section">
+    <div class="section-title">Pipeline step — Error state (auto-expanded)</div>
+    <div class="hint">Step lỗi tự mở rộng để lộ nguyên nhân ngay, không cần click.</div>
+    <div class="panel">
+      <div class="panel-body">
+        <div class="pipeline-steps">
+          <div class="pipeline-step done" data-step="1">
+            <div class="pipeline-step-dot">✓</div>
+            <div class="pipeline-step-body">
+              <div class="pipeline-step-header" onclick="toggleStep(this)">
+                <div>
+                  <div class="pipeline-step-title">Checkout source</div>
+                  <div class="pipeline-step-meta"><span class="mono">main@f81c2e4</span> · 3s</div>
+                </div>
+                <button class="pipeline-step-toggle" aria-label="Mở rộng log">
+                  <svg viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+              </div>
+              <div class="pipeline-step-logbox">
+                <div class="log-console-inner">
+                  <div class="step-log-console">
+                    <div class="log-line ok"><span class="ts">10:02:01</span><span class="lvl">OK</span><span>Checkout completed in 3s</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="pipeline-step error expanded" data-step="2">
+            <div class="pipeline-step-dot">✕</div>
+            <div class="pipeline-step-body">
+              <div class="pipeline-step-header" onclick="toggleStep(this)">
+                <div>
+                  <div class="pipeline-step-title" style="color:var(--err);">Run integration tests</div>
+                  <div class="pipeline-step-meta" style="color:var(--err);">Thất bại sau 47s</div>
+                </div>
+                <button class="pipeline-step-toggle" aria-label="Thu gọn log">
+                  <svg viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+              </div>
+              <div class="pipeline-step-logbox">
+                <div class="log-console-inner">
+                  <div class="step-log-console">
+                    <div class="step-log-toolbar">
+                      <span class="step-log-meta" style="color:var(--err);">3 dòng log · thất bại</span>
+                      <div class="step-log-actions">
+                        <button class="icon-btn" aria-label="Sao chép log" onclick="event.stopPropagation()">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                        </button>
+                      </div>
+                    </div>
+                    <div class="log-line info"><span class="ts">10:02:04</span><span class="lvl">INFO</span><span>Running test suite: integration</span></div>
+                    <div class="log-line err"><span class="ts">10:02:49</span><span class="lvl">ERR</span><span>Connection to db-replica-2 timed out after 5000ms</span></div>
+                    <div class="log-line err"><span class="ts">10:02:51</span><span class="lvl">ERR</span><span>Test suite failed: 3 passed, 1 failed, 0 skipped</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="pipeline-step" data-step="3">
+            <div class="pipeline-step-dot">3</div>
+            <div class="pipeline-step-body">
+              <div class="pipeline-step-header" style="cursor:default;">
+                <div>
+                  <div class="pipeline-step-title" style="color:var(--faint);">Deploy to Production</div>
+                  <div class="pipeline-step-meta" style="color:var(--faint);">Bị huỷ do bước trước thất bại</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Horizontal variant: click a step, log renders in shared panel below -->
+  <div class="section">
+    <div class="section-title">Pipeline (horizontal) — click step to view its log</div>
+    <div class="hint">Với layout ngang, cột quá hẹp để mở log ngay dưới từng step — click vào 1 step để chọn, log hiện trong panel chung phía dưới hàng thay vì đẩy layout vỡ.</div>
+
+    <div class="panel">
+      <div class="panel-body">
+        <div class="pipeline-steps horizontal" id="h-pipeline">
+          <div class="pipeline-step done selected" data-hstep="1" onclick="selectHStep(this)">
+            <div class="pipeline-step-dot">✓</div>
+            <div class="pipeline-step-body">
+              <div class="pipeline-step-title">Checkout</div>
+              <div class="pipeline-step-meta">4s</div>
+            </div>
+          </div>
+          <div class="pipeline-step done" data-hstep="2" onclick="selectHStep(this)">
+            <div class="pipeline-step-dot">✓</div>
+            <div class="pipeline-step-body">
+              <div class="pipeline-step-title">Build</div>
+              <div class="pipeline-step-meta">1m 12s</div>
+            </div>
+          </div>
+          <div class="pipeline-step active" data-hstep="3" onclick="selectHStep(this)">
+            <div class="pipeline-step-dot">3</div>
+            <div class="pipeline-step-body">
+              <div class="pipeline-step-title">Deploy</div>
+              <div class="pipeline-step-meta">đang chạy…</div>
+            </div>
+          </div>
+          <div class="pipeline-step" data-hstep="4">
+            <div class="pipeline-step-dot">4</div>
+            <div class="pipeline-step-body">
+              <div class="pipeline-step-title" style="color:var(--faint);">Smoke test</div>
+              <div class="pipeline-step-meta" style="color:var(--faint);">Đang chờ</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="horizontal-log-panel">
+          <div class="step-log-console" id="h-log-console">
+            <!-- populated by selectHStep() -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const hStepLogs = {
+    1: {
+      meta: '4 dòng log · hoàn tất trong 4s', live: false,
+      lines: [
+        ['info','17:22:58','Cloning repository qc-onehub/cicd-app...'],
+        ['info','17:22:59','Checking out main@a3f21c9'],
+        ['ok','17:23:01','Working tree clean, HEAD at a3f21c9'],
+        ['ok','17:23:02','Checkout completed in 4s'],
+      ],
+    },
+    2: {
+      meta: '6 dòng log · hoàn tất trong 1m 12s', live: false,
+      lines: [
+        ['info','17:23:03','Building Dockerfile with BuildKit...'],
+        ['info','17:23:15','Step 3/9: RUN npm ci --production'],
+        ['info','17:24:02','Step 7/9: COPY --from=build /app/dist ./dist'],
+        ['ok','17:24:11','Image built: registry.onehub.internal/app:v2.4.1 (312MB)'],
+        ['info','17:24:13','Pushing to registry.onehub.internal...'],
+        ['ok','17:24:15','Push completed in 1m 12s'],
+      ],
+    },
+    3: {
+      meta: null, live: true,
+      lines: [
+        ['info','17:24:16','Starting rolling update: deploy-prod-v2.4.1'],
+        ['info','17:24:18','Pulling image registry.onehub.internal/app:v2.4.1'],
+        ['ok','17:24:20','Pod onehub-app-7d9f8-1 scheduled on node-03'],
+        ['warn','17:24:22','Readiness probe slow to respond (2.1s), retrying...'],
+        ['ok','17:24:25','Pod onehub-app-7d9f8-1 is Ready (1/3)'],
+      ],
+      cursorLine: ['info','17:24:26','Waiting for pod 2/3'],
+    },
+  };
+
+  function renderHLog(stepKey) {
+    const data = hStepLogs[stepKey];
+    const box = document.getElementById('h-log-console');
+    if (!data) { box.innerHTML = '<div class="step-log-meta" style="padding:4px 0;">Chưa có log — step đang chờ.</div>'; return; }
+    const toolbar = data.live
+      ? `<div class="step-log-toolbar"><span class="live-badge"><span class="live-dot"></span> Live</span>
+           <div class="step-log-actions"><button class="icon-btn" aria-label="Sao chép log" onclick="event.stopPropagation()">
+             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+           </button></div></div>`
+      : `<div class="step-log-toolbar"><span class="step-log-meta">${data.meta}</span>
+           <div class="step-log-actions"><button class="icon-btn" aria-label="Sao chép log" onclick="event.stopPropagation()">
+             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+           </button></div></div>`;
+    const lines = data.lines.map(([lvl, ts, text]) =>
+      `<div class="log-line ${lvl}"><span class="ts">${ts}</span><span class="lvl">${lvl.toUpperCase()}</span><span>${text}</span></div>`
+    ).join('');
+    const cursor = data.cursorLine
+      ? `<div class="log-line ${data.cursorLine[0]}"><span class="ts">${data.cursorLine[1]}</span><span class="lvl">${data.cursorLine[0].toUpperCase()}</span><span>${data.cursorLine[2]}<span class="live-cursor"></span></span></div>`
+      : '';
+    box.innerHTML = toolbar + lines + cursor;
+    box.scrollTop = box.scrollHeight;
+  }
+
+  function selectHStep(stepEl) {
+    document.querySelectorAll('#h-pipeline .pipeline-step').forEach(s => s.classList.remove('selected'));
+    stepEl.classList.add('selected');
+    renderHLog(stepEl.dataset.hstep);
+  }
+
+  renderHLog('1');
+
+  function toggleStep(headerEl) {
+    const step = headerEl.closest('.pipeline-step');
+    if (!step || step.querySelector('.pipeline-step-toggle') === null && !step.classList.contains('done') && !step.classList.contains('active') && !step.classList.contains('error')) return;
+    step.classList.toggle('expanded');
+  }
+
+  function toggleAll() {
+    const steps = document.querySelectorAll('#pipeline .pipeline-step.done, #pipeline .pipeline-step.active, #pipeline .pipeline-step.error');
+    const anyCollapsed = Array.from(steps).some(s => !s.classList.contains('expanded'));
+    steps.forEach(s => s.classList.toggle('expanded', anyCollapsed));
+  }
+
+  // Simulate live-tailing logs for the active step: append a new line every ~1.8s
+  const liveLines = [
+    { lvl: 'ok',   text: 'Pod onehub-app-7d9f8-2 is Ready (2/3)' },
+    { lvl: 'info', text: 'Waiting for pod 3/3' },
+    { lvl: 'ok',   text: 'Pod onehub-app-7d9f8-3 is Ready (3/3)' },
+    { lvl: 'info', text: 'Verifying rollout status...' },
+    { lvl: 'ok',   text: 'deployment "onehub-app" successfully rolled out' },
+  ];
+  let liveIdx = 0;
+  function tickLiveLog() {
+    if (liveIdx >= liveLines.length) return;
+    const cursorLine = document.getElementById('live-log-cursor-line');
+    const container = document.getElementById('live-log-lines');
+    const linesBox = document.getElementById('live-log');
+    if (!cursorLine || !container) return;
+
+    const now = new Date();
+    const ts = String(17).padStart(2,'0') + ':' + String(24 + Math.floor((27+liveIdx*2)/60)).padStart(2,'0') + ':' + String((27+liveIdx*2)%60).padStart(2,'0');
+    const line = liveLines[liveIdx];
+    const el = document.createElement('div');
+    el.className = 'log-line ' + line.lvl;
+    el.innerHTML = `<span class="ts">${ts}</span><span class="lvl">${line.lvl.toUpperCase()}</span><span>${line.text}</span>`;
+    container.appendChild(el);
+    liveIdx++;
+
+    if (liveIdx >= liveLines.length) {
+      cursorLine.remove();
+      // mark step done
+      const step = document.querySelector('.pipeline-step[data-step="3"]');
+      step.classList.remove('active');
+      step.classList.add('done');
+      step.querySelector('.pipeline-step-dot').textContent = '✓';
+      step.querySelector('.pipeline-step-meta').textContent = 'Rolling update · hoàn tất';
+      const liveBadge = document.querySelector('#live-log .live-badge');
+      if (liveBadge) liveBadge.outerHTML = '<span class="step-log-meta">' + (5 + liveLines.length) + ' dòng log · hoàn tất</span>';
+      const nextStep = document.querySelector('.pipeline-step[data-step="4"]');
+      nextStep.classList.add('active');
+      nextStep.querySelector('.pipeline-step-dot').textContent = '4';
+      nextStep.querySelector('.pipeline-step-dot').style.background = 'var(--brand)';
+      nextStep.querySelector('.pipeline-step-dot').style.borderColor = 'var(--brand)';
+      nextStep.querySelector('.pipeline-step-dot').style.color = '#fff';
+      const title = nextStep.querySelector('.pipeline-step-title');
+      const meta = nextStep.querySelector('.pipeline-step-meta');
+      title.style.color = ''; title.textContent = 'Smoke test';
+      meta.style.color = ''; meta.textContent = 'Đang chạy…';
+    } else {
+      linesBox.scrollTop = linesBox.scrollHeight;
+      setTimeout(tickLiveLog, 1800);
+    }
+  }
+  setTimeout(tickLiveLog, 1800);
+</script>
+</body>
+</html>

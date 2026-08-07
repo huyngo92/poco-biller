@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QC OneHub — Brand System Demo</title>
+  <link rel="stylesheet" href="../assets/tokens.css">
+  <link rel="stylesheet" href="../assets/components.css">
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+  <style>
+    /* Demo-only layout helpers */
+    .page-wrap { max-width: 1100px; margin: 0 auto; padding: 32px 24px 80px; }
+    .section { margin-top: 48px; }
+    .section-title {
+      font-family: var(--font-mono);
+      font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.14em;
+      color: var(--dim); margin-bottom: 16px;
+      padding-bottom: 8px; border-bottom: 1px solid var(--rule);
+    }
+    .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .col { display: flex; flex-direction: column; gap: 10px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+    .swatch-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .swatch {
+      width: 80px; border-radius: var(--radius-sm);
+      overflow: hidden; border: 1px solid var(--border);
+    }
+    .swatch-color { height: 40px; }
+    .swatch-label {
+      padding: 4px 6px;
+      font-family: var(--font-mono); font-size: 9px;
+      color: var(--muted); background: var(--surface);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .dark-toggle {
+      position: fixed; top: 14px; right: 20px; z-index: 200;
+    }
+
+    /* Live modal/toast demo state */
+    #modal-demo { display: none; }
+    #modal-demo.open { display: flex; }
+    .toast-demo-stack { position: fixed; bottom: 24px; right: 24px; z-index: 1100;
+                        display: flex; flex-direction: column; gap: 8px; }
+  </style>
+</head>
+<body>
+
+<!-- Corporate top accent bar -->
+<div class="brand-top-accent"></div>
+
+<!-- Dark mode toggle (class-based) — toggles between .light/.dark so it
+     also overrides an OS-level prefers-color-scheme:dark setting -->
+<button class="btn ghost sm dark-toggle" onclick="var h=document.documentElement; h.classList.toggle('dark'); h.classList.toggle('light', !h.classList.contains('dark'));" style="position:fixed;top:10px;right:20px;z-index:200;">
+  ☀ / ☾ Dark
+</button>
+
+<!-- App Header (logo tile pattern — CP4I API Registry style) -->
+<header class="app-header">
+  <div class="app-header-brand">
+    <div class="app-header-logo">QC</div>
+    <div class="app-header-text">
+      <div class="app-header-title">OneHub <em>CI/CD Console</em></div>
+      <div class="app-header-sub"><strong>DevOps</strong> <span class="sep">·</span> <strong>Internal Tool</strong> <span class="sep">·</span> <strong>Release 2.4.1</strong></div>
+    </div>
+  </div>
+  <div class="app-header-right">
+    <span class="app-header-right-label" data-i18n-vi="Môi trường" data-i18n-en="Environment">Environment</span>
+    <select class="select" style="min-width:220px;">
+      <option data-i18n-vi="— Chọn môi trường —" data-i18n-en="— Select environment —">— Select environment —</option>
+      <option>Production</option>
+      <option data-i18n-vi="Staging" data-i18n-en="Staging">Staging</option>
+    </select>
+
+    <!-- Notification bell -->
+    <div class="notif-bell" id="notif-bell">
+      <button class="notif-bell-trigger" aria-label="Thông báo" onclick="event.stopPropagation(); document.getElementById('notif-bell').classList.toggle('open');">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span class="notif-badge">3</span>
+      </button>
+      <div class="notif-popup">
+        <div class="notif-popup-header">
+          <span class="notif-popup-title" data-i18n-vi="Thông báo" data-i18n-en="Notifications">Notifications</span>
+          <button class="notif-mark-all" data-i18n-vi="Đánh dấu đã đọc" data-i18n-en="Mark all as read">Mark all as read</button>
+        </div>
+        <div class="notif-list">
+          <div class="notif-item unread">
+            <div class="notif-item-icon err">!</div>
+            <div class="notif-item-body">
+              <div class="notif-item-title" data-i18n-vi="Deploy thất bại" data-i18n-en="Deploy failed">Deploy failed</div>
+              <div class="notif-item-desc" data-i18n-vi="test-integration lỗi kết nối DB" data-i18n-en="test-integration failed: DB connection error">test-integration failed: DB connection error</div>
+              <div class="notif-item-time" data-i18n-vi="12 phút trước" data-i18n-en="12 minutes ago">12 minutes ago</div>
+            </div>
+            <div class="notif-item-dot" style="background:var(--err);"></div>
+          </div>
+          <div class="notif-item unread">
+            <div class="notif-item-icon ok">✓</div>
+            <div class="notif-item-body">
+              <div class="notif-item-title" data-i18n-vi="Deploy thành công" data-i18n-en="Deploy succeeded">Deploy succeeded</div>
+              <div class="notif-item-desc" data-i18n-vi="deploy-prod-v2.4.1 đã lên Production" data-i18n-en="deploy-prod-v2.4.1 is live on Production">deploy-prod-v2.4.1 is live on Production</div>
+              <div class="notif-item-time" data-i18n-vi="1 giờ trước" data-i18n-en="1 hour ago">1 hour ago</div>
+            </div>
+            <div class="notif-item-dot"></div>
+          </div>
+          <div class="notif-item unread">
+            <div class="notif-item-icon warn">⚠</div>
+            <div class="notif-item-body">
+              <div class="notif-item-title" data-i18n-vi="Cảnh báo CPU" data-i18n-en="CPU warning">CPU warning</div>
+              <div class="notif-item-desc" data-i18n-vi="CPU usage đang ở 87% trên Production" data-i18n-en="CPU usage at 87% on Production">CPU usage at 87% on Production</div>
+              <div class="notif-item-time" data-i18n-vi="3 giờ trước" data-i18n-en="3 hours ago">3 hours ago</div>
+            </div>
+            <div class="notif-item-dot" style="background:var(--warn);"></div>
+          </div>
+          <div class="notif-item">
+            <div class="notif-item-icon info">i</div>
+            <div class="notif-item-body">
+              <div class="notif-item-title" data-i18n-vi="Pipeline mới được tạo" data-i18n-en="New pipeline created">New pipeline created</div>
+              <div class="notif-item-desc" data-i18n-vi="build-staging đã được thêm vào dự án" data-i18n-en="build-staging was added to the project">build-staging was added to the project</div>
+              <div class="notif-item-time" data-i18n-vi="Hôm qua" data-i18n-en="Yesterday">Yesterday</div>
+            </div>
+          </div>
+        </div>
+        <div class="notif-popup-footer">
+          <a href="#" data-i18n-vi="Xem tất cả thông báo" data-i18n-en="View all notifications">View all notifications</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Language switch -->
+    <div class="lang-switch" id="lang-switch">
+      <button class="lang-switch-trigger" onclick="event.stopPropagation(); document.getElementById('lang-switch').classList.toggle('open');">
+        <span class="flag" id="lang-flag">🇻🇳</span>
+        <span id="lang-label">VI</span>
+        <svg class="chev" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="lang-popup">
+        <button class="lang-option active" data-lang="vi" onclick="setLang('vi')"><span class="flag">🇻🇳</span> Tiếng Việt</button>
+        <button class="lang-option" data-lang="en" onclick="setLang('en')"><span class="flag">🇬🇧</span> English</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- Context banner -->
+<div class="context-banner">
+  No environment selected — pick one from the top-right dropdown to enable tools.
+</div>
+
+<!-- Underline tabs (style preview only — no tab-switch JS, this is a design-system demo, not an app) -->
+<div class="tabs-underline">
+  <button class="active">Dashboard</button>
+  <button>Pipelines</button>
+  <button>Deployments</button>
+  <button disabled>Logs</button>
+</div>
+
+<!-- Navbar (pill-style, alternative header) -->
+<nav class="navbar">
+  <a class="navbar-brand" href="#">QC OneHub</a>
+  <div class="navbar-nav">
+    <a class="nav-link active" href="#">Dashboard</a>
+    <a class="nav-link" href="#">Pipelines</a>
+    <a class="nav-link" href="#">Deployments</a>
+    <a class="nav-link" href="#">Logs</a>
+    <a class="nav-link" href="#">Settings</a>
+  </div>
+  <div class="navbar-end">
+    <span class="badge blue">v2.4.1</span>
+    <button class="btn ghost sm">Profile</button>
+  </div>
+</nav>
+
+<div class="page-wrap">
+  <div class="section" style="margin-top:24px;">
+    <div class="section-title">App Header Pattern (logo tile + underline tabs + context banner)</div>
+    <p style="font-size:12px;color:var(--muted);">Xem phía trên cùng trang. Dùng khi cần header trang trọng hơn navbar pill — có logo tile 54×54, tiêu đề với <code>&lt;em&gt;</code> nhấn brand color, breadcrumb mono, và banner cảnh báo/context ngay dưới.</p>
+  </div>
+
+  <!-- Color Palette -->
+  <div class="section">
+    <div class="section-title">Color Tokens</div>
+    <div class="swatch-row">
+      <div class="swatch"><div class="swatch-color" style="background:var(--brand)"></div><div class="swatch-label">--brand</div></div>
+      <div class="swatch"><div class="swatch-color" style="background:var(--brand-dark)"></div><div class="swatch-label">--brand-dark</div></div>
+      <div class="swatch"><div class="swatch-color" style="background:var(--brand-darker)"></div><div class="swatch-label">--brand-darker</div></div>
+      <div class="swatch"><div class="swatch-color" style="background:var(--brand-soft)"></div><div class="swatch-label">--brand-soft</div></div>
+      <div class="swatch"><div class="swatch-color" style="background:var(--ok)"></div><div class="swatch-label">--ok</div></div>
+      <div class="swatch"><div class="swatch-color" style="background:var(--warn)"></div><div class="swatch-label">--warn</div></div>
+      <div class="swatch"><div class="swatch-color" style="background:var(--err)"></div><div class="swatch-label">--err</div></div>
+      <div class="swatch"><div class="swatch-color" style="background:var(--purple)"></div><div class="swatch-label">--purple</div></div>
+      <div class="swatch"><div class="swatch-color" style="background:var(--ink)"></div><div class="swatch-label">--ink</div></div>
+      <div class="swatch"><div class="swatch-color" style="background:var(--muted)"></div><div class="swatch-label">--muted</div></div>
+      <div class="swatch"><div class="swatch-color" style="background:var(--dim)"></div><div class="swatch-label">--dim</div></div>
+      <div class="swatch"><div class="swatch-color" style="background:var(--bg)"></div><div class="swatch-label">--bg</div></div>
+    </div>
+  </div>
+
+  <!-- Buttons -->
+  <div class="section">
+    <div class="section-title">Buttons</div>
+    <div class="col">
+      <div class="row">
+        <button class="btn primary">Primary</button>
+        <button class="btn ghost">Ghost</button>
+        <button class="btn danger">Danger</button>
+        <button class="btn primary" disabled>Disabled</button>
+      </div>
+      <div class="row">
+        <button class="btn primary sm">Small Primary</button>
+        <button class="btn ghost sm">Small Ghost</button>
+        <button class="btn primary lg">Large Primary</button>
+        <button class="btn ghost lg">Large Ghost</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Badges & Method tokens -->
+  <div class="section">
+    <div class="section-title">Badges &amp; HTTP Method Tokens</div>
+    <div class="col">
+      <div class="row">
+        <span class="badge green">Active</span>
+        <span class="badge yellow">Pending</span>
+        <span class="badge red">Failed</span>
+        <span class="badge blue">Running</span>
+        <span class="badge purple">Staging</span>
+        <span class="badge gray">Archived</span>
+      </div>
+      <div class="row">
+        <span class="method GET">GET</span>
+        <span class="method POST">POST</span>
+        <span class="method PUT">PUT</span>
+        <span class="method DELETE">DELETE</span>
+        <span class="method PATCH">PATCH</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stat Cards -->
+  <div class="section">
+    <div class="section-title">Stat Cards</div>
+    <div class="grid-4">
+      <div class="stat-card">
+        <div class="stat-label">Total Deployments</div>
+        <div class="stat-value">1,284</div>
+        <div class="stat-delta up">↑ 12% so với tuần trước</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Success Rate</div>
+        <div class="stat-value">98.4%</div>
+        <div class="stat-delta up">↑ 0.6pp</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Avg Build Time</div>
+        <div class="stat-value">3m 42s</div>
+        <div class="stat-delta down">↓ 18s chậm hơn</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Active Pipelines</div>
+        <div class="stat-value">7</div>
+        <div class="stat-delta">Không đổi</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Panels -->
+  <div class="section">
+    <div class="section-title">Panels</div>
+    <div class="grid-3">
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">Recent Pipelines</span>
+          <span class="badge blue">Live</span>
+        </div>
+        <div class="panel-body" style="color:var(--muted);font-size:13px;">
+          Panel body content goes here. Padding 16px on all sides.
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">System Health</span>
+          <span class="badge green">Healthy</span>
+        </div>
+        <div class="panel-body" style="color:var(--muted);font-size:13px;">
+          Hover panel để thấy shadow lift + 1px translateY.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="section">
+    <div class="section-title">Table</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Pipeline</th>
+            <th>Method</th>
+            <th>Status</th>
+            <th>Duration</th>
+            <th>Triggered</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="row-active">
+            <td><strong>deploy-prod-v2.4.1</strong></td>
+            <td><span class="method POST">POST</span></td>
+            <td><span class="badge green">Active</span></td>
+            <td style="font-family:var(--font-mono);font-size:12px;">2m 14s</td>
+            <td style="color:var(--muted);font-size:12px;">2 phút trước</td>
+            <td><button class="btn ghost sm">Logs</button></td>
+          </tr>
+          <tr class="row-pending">
+            <td><strong>build-staging</strong></td>
+            <td><span class="method PUT">PUT</span></td>
+            <td><span class="badge yellow">Pending</span></td>
+            <td style="font-family:var(--font-mono);font-size:12px;">—</td>
+            <td style="color:var(--muted);font-size:12px;">5 phút trước</td>
+            <td><button class="btn ghost sm">Logs</button></td>
+          </tr>
+          <tr class="row-error">
+            <td><strong>test-integration</strong></td>
+            <td><span class="method GET">GET</span></td>
+            <td><span class="badge red">Failed</span></td>
+            <td style="font-family:var(--font-mono);font-size:12px;">0m 47s</td>
+            <td style="color:var(--muted);font-size:12px;">12 phút trước</td>
+            <td><button class="btn ghost sm">Logs</button></td>
+          </tr>
+          <tr>
+            <td><strong>cleanup-old-images</strong></td>
+            <td><span class="method DELETE">DELETE</span></td>
+            <td><span class="badge gray">Archived</span></td>
+            <td style="font-family:var(--font-mono);font-size:12px;">1m 03s</td>
+            <td style="color:var(--muted);font-size:12px;">1 giờ trước</td>
+            <td><button class="btn ghost sm">Logs</button></td>
+          </tr>
+          <tr>
+            <td><strong>patch-config</strong></td>
+            <td><span class="method PATCH">PATCH</span></td>
+            <td><span class="badge purple">Staging</span></td>
+            <td style="font-family:var(--font-mono);font-size:12px;">3m 28s</td>
+            <td style="color:var(--muted);font-size:12px;">2 giờ trước</td>
+            <td><button class="btn ghost sm">Logs</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Form Inputs -->
+  <div class="section">
+    <div class="section-title">Form Inputs</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;max-width:700px;">
+      <div class="field">
+        <label>Pipeline Name</label>
+        <input class="input" type="text" placeholder="e.g. deploy-prod">
+        <span class="hint">Tên pipeline phải là duy nhất</span>
+      </div>
+      <div class="field">
+        <label>Environment</label>
+        <select class="select">
+          <option>Production</option>
+          <option>Staging</option>
+          <option>Development</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Branch (Error state)</label>
+        <input class="input error" type="text" value="main">
+        <span class="error-msg">Branch này không tồn tại</span>
+      </div>
+      <div class="field">
+        <label>Description</label>
+        <textarea class="textarea" rows="3" placeholder="Mô tả ngắn về pipeline..."></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- Combo (searchable dropdown) -->
+  <div class="section">
+    <div class="section-title">Combo (Searchable Dropdown)</div>
+    <div class="combo" id="app-combo">
+      <button class="combo-trigger" onclick="document.getElementById('app-combo').classList.toggle('open')">
+        deploy-prod-v2.4.1
+      </button>
+      <div class="combo-panel">
+        <div class="combo-search"><input type="text" placeholder="Tìm pipeline..." oninput="filterCombo(this)"></div>
+        <div class="combo-options" id="combo-options">
+          <div class="combo-option selected">deploy-prod-v2.4.1</div>
+          <div class="combo-option">build-staging</div>
+          <div class="combo-option">test-integration</div>
+          <div class="combo-option">cleanup-old-images</div>
+          <div class="combo-option">patch-config</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pipeline tab demo -->
+  <div class="section">
+    <div class="section-title">Pipeline (stage tracker)</div>
+    <div class="panel">
+      <div class="panel-body">
+        <div class="pipeline-steps">
+          <div class="pipeline-step done">
+            <div class="pipeline-step-dot">✓</div>
+            <div class="pipeline-step-body">
+              <div class="pipeline-step-title">Checkout source</div>
+              <div class="pipeline-step-meta"><span class="mono">main@a3f21c9</span> · 4s</div>
+            </div>
+          </div>
+          <div class="pipeline-step done">
+            <div class="pipeline-step-dot">✓</div>
+            <div class="pipeline-step-body">
+              <div class="pipeline-step-title">Build image</div>
+              <div class="pipeline-step-meta"><span class="mono">docker build</span> · 1m 12s</div>
+            </div>
+          </div>
+          <div class="pipeline-step active">
+            <div class="pipeline-step-dot">3</div>
+            <div class="pipeline-step-body">
+              <div class="pipeline-step-title">Deploy to Production</div>
+              <div class="pipeline-step-meta">Rolling update · đang chạy…</div>
+            </div>
+          </div>
+          <div class="pipeline-step">
+            <div class="pipeline-step-dot">4</div>
+            <div class="pipeline-step-body">
+              <div class="pipeline-step-title">Smoke test</div>
+              <div class="pipeline-step-meta" style="color:var(--faint);">Đang chờ</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Charts -->
+  <div class="section">
+    <div class="section-title">Charts (ApexCharts, tokens pulled via getComputedStyle)</div>
+    <div class="grid-3">
+      <div class="panel">
+        <div class="panel-header"><span class="panel-title">Deploy Trend (7 ngày)</span></div>
+        <div class="panel-body"><div id="chart-trend"></div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><span class="panel-title">Status Breakdown</span></div>
+        <div class="panel-body"><div id="chart-donut"></div></div>
+      </div>
+    </div>
+    <div class="grid-3" style="margin-top:14px;">
+      <div class="panel">
+        <div class="panel-header"><span class="panel-title">Data Operations (stacked)</span></div>
+        <div class="panel-body"><div id="chart-stacked"></div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><span class="panel-title">Team Workload</span></div>
+        <div class="panel-body"><div id="chart-radial"></div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><span class="panel-title">Project Performance</span></div>
+        <div class="panel-body"><div id="chart-multiline"></div></div>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:14px;">
+      <div class="panel-header">
+        <span class="panel-title">Deploy Activity Heatmap</span>
+        <span class="badge blue">4 tuần gần nhất</span>
+      </div>
+      <div class="panel-body"><div id="chart-heatmap"></div></div>
+    </div>
+  </div>
+
+  <!-- Pipeline horizontal variant -->
+  <div class="section">
+    <div class="section-title">Pipeline (horizontal)</div>
+    <div class="panel">
+      <div class="panel-body">
+        <div class="pipeline-steps horizontal">
+          <div class="pipeline-step done">
+            <div class="pipeline-step-dot">✓</div>
+            <div class="pipeline-step-body">
+              <div class="pipeline-step-title">Checkout</div>
+              <div class="pipeline-step-meta">4s</div>
+            </div>
+          </div>
+          <div class="pipeline-step done">
+            <div class="pipeline-step-dot">✓</div>
+            <div class="pipeline-step-body">
+              <div class="pipeline-step-title">Build</div>
+              <div class="pipeline-step-meta">1m 12s</div>
+            </div>
+          </div>
+          <div class="pipeline-step active">
+            <div class="pipeline-step-dot">3</div>
+            <div class="pipeline-step-body">
+              <div class="pipeline-step-title">Deploy</div>
+              <div class="pipeline-step-meta">đang chạy…</div>
+            </div>
+          </div>
+          <div class="pipeline-step">
+            <div class="pipeline-step-dot">4</div>
+            <div class="pipeline-step-body">
+              <div class="pipeline-step-title">Smoke test</div>
+              <div class="pipeline-step-meta" style="color:var(--faint);">Đang chờ</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Logs tab demo -->
+  <div class="section">
+    <div class="section-title">Logs (console output)</div>
+    <div class="log-console">
+      <div class="log-line info"><span class="ts">17:24:01</span><span class="lvl">INFO</span><span>Starting deploy-prod-v2.4.1 rolling update...</span></div>
+      <div class="log-line info"><span class="ts">17:24:03</span><span class="lvl">INFO</span><span>Pulling image registry.onehub.internal/app:v2.4.1</span></div>
+      <div class="log-line ok"><span class="ts">17:24:18</span><span class="lvl">OK</span><span>Image pulled successfully (312MB)</span></div>
+      <div class="log-line warn"><span class="ts">17:24:22</span><span class="lvl">WARN</span><span>Readiness probe slow to respond (2.1s), retrying...</span></div>
+      <div class="log-line ok"><span class="ts">17:24:25</span><span class="lvl">OK</span><span>Pod onehub-app-7d9f8 is Ready</span></div>
+      <div class="log-line err"><span class="ts">17:24:31</span><span class="lvl">ERR</span><span>Connection to db-replica-2 timed out after 5000ms</span></div>
+      <div class="log-line info"><span class="ts">17:24:32</span><span class="lvl">INFO</span><span>Retrying with db-replica-1...</span></div>
+    </div>
+  </div>
+
+  <!-- Selection bar trigger -->
+  <div class="section">
+    <div class="section-title">Selection Bar (bulk actions)</div>
+    <button class="btn ghost" onclick="document.getElementById('selection-bar').classList.remove('hidden')">Chọn 3 dòng trong bảng phía trên</button>
+  </div>
+
+  <!-- Modal trigger -->
+  <div class="section">
+    <div class="section-title">Modal</div>
+    <button class="btn primary" onclick="document.getElementById('modal-demo').classList.add('open')">
+      Mở Modal Demo
+    </button>
+  </div>
+
+  <!-- Toasts trigger -->
+  <div class="section">
+    <div class="section-title">Toasts</div>
+    <div class="row">
+      <button class="btn ghost" onclick="showToast('info')">Info Toast</button>
+      <button class="btn ghost" onclick="showToast('ok')">Success Toast</button>
+      <button class="btn ghost" onclick="showToast('err')">Error Toast</button>
+      <button class="btn ghost" onclick="showToast('warn')">Warning Toast</button>
+    </div>
+  </div>
+
+  <!-- Typography -->
+  <div class="section">
+    <div class="section-title">Typography</div>
+    <div class="panel">
+      <div class="panel-body" style="display:flex;flex-direction:column;gap:14px;">
+        <div style="font-size:32px;font-weight:800;letter-spacing:-0.03em;color:var(--ink);">Heading 800 / 32px</div>
+        <div style="font-size:24px;font-weight:700;letter-spacing:-0.025em;color:var(--ink);">Heading 700 / 24px</div>
+        <div style="font-size:18px;font-weight:600;letter-spacing:-0.02em;color:var(--ink);">Heading 600 / 18px</div>
+        <div style="font-size:14px;font-weight:400;color:var(--ink-2);line-height:1.55;">Body 14px — Inter 400. Dùng cho tất cả nội dung chính, input, panel descriptions. Hỗ trợ tiếng Việt đầy đủ.</div>
+        <div style="font-size:13px;font-weight:400;color:var(--muted);">Small 13px — Secondary text, labels, table cells.</div>
+        <div style="font-family:var(--font-mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.14em;color:var(--dim);">MONO EYEBROW LABEL — JetBrains Mono 700</div>
+        <div style="font-family:var(--font-mono);font-size:13px;color:var(--ink-2);">mono-body: <span style="color:var(--brand);">GET /api/v2/pipelines?env=prod</span></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /page-wrap -->
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal-demo" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Xác nhận Deploy</span>
+      <button class="modal-close" aria-label="Đóng" onclick="document.getElementById('modal-demo').classList.remove('open')">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--ink-2);line-height:1.6;">
+        Bạn sắp deploy <strong>v2.4.1</strong> lên môi trường <span class="badge blue">Production</span>.
+        Hành động này không thể hoàn tác ngay lập tức.
+      </p>
+      <div style="margin-top:16px;padding:12px 14px;background:var(--warn-soft);border-radius:var(--radius);border-left:3px solid var(--warn);">
+        <div style="font-size:12px;color:var(--warn);font-weight:600;">Lưu ý</div>
+        <div style="font-size:12px;color:var(--ink-2);margin-top:2px;">Downtime dự kiến: ~30 giây trong quá trình rolling update.</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn ghost" onclick="document.getElementById('modal-demo').classList.remove('open')">Huỷ</button>
+      <button class="btn primary" onclick="document.getElementById('modal-demo').classList.remove('open');showToast('ok')">Xác nhận Deploy</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div class="toast-demo-stack" id="toast-stack"></div>
+
+<!-- Selection bar -->
+<div class="selection-bar hidden" id="selection-bar">
+  <div class="selection-bar-count"><strong>3</strong> mục đã chọn</div>
+  <div class="selection-bar-actions">
+    <button class="btn ghost sm" onclick="document.getElementById('selection-bar').classList.add('hidden')">Huỷ chọn</button>
+    <button class="btn danger sm" onclick="document.getElementById('selection-bar').classList.add('hidden')">Xoá</button>
+  </div>
+</div>
+
+<script>
+  const toastConfigs = {
+    info:  { cls: '',     title: 'Thông báo',    desc: 'Pipeline đã được khởi chạy thành công.' },
+    ok:    { cls: 'ok',   title: 'Deploy xong!', desc: 'v2.4.1 đã lên Production lúc 17:24.' },
+    err:   { cls: 'err',  title: 'Deploy thất bại', desc: 'Lỗi kết nối DB. Xem logs để biết thêm.' },
+    warn:  { cls: 'warn', title: 'Cảnh báo',     desc: 'CPU usage đang ở 87% — theo dõi thêm.' },
+  };
+
+  function showToast(type) {
+    const cfg = toastConfigs[type];
+    const stack = document.getElementById('toast-stack');
+    const el = document.createElement('div');
+    el.className = 'toast ' + cfg.cls;
+    el.setAttribute('role', type === 'err' ? 'alert' : 'status');
+    el.setAttribute('aria-live', type === 'err' ? 'assertive' : 'polite');
+    el.innerHTML = `<div class="toast-msg"><div class="toast-title">${cfg.title}</div><div class="toast-desc">${cfg.desc}</div></div>`;
+    stack.appendChild(el);
+    setTimeout(() => el.remove(), 4000);
+  }
+
+  // Combo (searchable dropdown) demo wiring
+  document.querySelectorAll('.combo-option').forEach(opt => {
+    opt.addEventListener('click', () => {
+      const combo = opt.closest('.combo');
+      combo.querySelectorAll('.combo-option').forEach(o => o.classList.remove('selected'));
+      opt.classList.add('selected');
+      combo.querySelector('.combo-trigger').textContent = opt.textContent;
+      combo.classList.remove('open');
+    });
+  });
+  document.addEventListener('click', (e) => {
+    document.querySelectorAll('.combo.open').forEach(combo => {
+      if (!combo.contains(e.target)) combo.classList.remove('open');
+    });
+  });
+  function filterCombo(input) {
+    const q = input.value.toLowerCase();
+    document.getElementById('combo-options').querySelectorAll('.combo-option').forEach(opt => {
+      opt.style.display = opt.textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
+  }
+
+  // Notification bell + language switch — close on outside click
+  document.addEventListener('click', (e) => {
+    const bell = document.getElementById('notif-bell');
+    if (bell && !bell.contains(e.target)) bell.classList.remove('open');
+    const lang = document.getElementById('lang-switch');
+    if (lang && !lang.contains(e.target)) lang.classList.remove('open');
+  });
+  document.querySelectorAll('.notif-mark-all')[0]?.addEventListener('click', () => {
+    document.querySelectorAll('.notif-item.unread').forEach(el => el.classList.remove('unread'));
+    document.querySelector('.notif-badge')?.remove();
+  });
+
+  // Language switch — toggles all [data-i18n-vi]/[data-i18n-en] text + <html lang>
+  function setLang(lang) {
+    document.documentElement.lang = lang;
+    document.getElementById('lang-flag').textContent = lang === 'vi' ? '🇻🇳' : '🇬🇧';
+    document.getElementById('lang-label').textContent = lang.toUpperCase();
+    document.querySelectorAll('.lang-option').forEach(o => o.classList.toggle('active', o.dataset.lang === lang));
+    document.querySelectorAll('[data-i18n-' + lang + ']').forEach(el => {
+      el.textContent = el.dataset['i18n' + (lang === 'vi' ? 'Vi' : 'En')];
+    });
+    document.getElementById('lang-switch').classList.remove('open');
+  }
+
+  // Charts — pull brand tokens live so they follow light/dark toggle
+  let trendChart, donutChart, stackedChart, radialChart, multilineChart, heatmapChart;
+  function tokenColors() {
+    const css = getComputedStyle(document.documentElement);
+    const get = (name) => css.getPropertyValue(name).trim();
+    return { brand: get('--brand'), ok: get('--ok'), warn: get('--warn'), err: get('--err'),
+              dim: get('--dim'), rule: get('--rule'), ink2: get('--ink-2'), purple: get('--purple'),
+              info: get('--info'), surface: get('--surface') };
+  }
+  // Blend a hex color toward another hex color by `ratio` (0 = base, 1 = target) — used instead of
+  // hex+alpha suffixes (e.g. brand + '40'), which some ApexCharts versions fail to parse as a valid
+  // color and silently fall back to the default multi-color series palette (the "wrong colors after
+  // toggling theme" bug).
+  function blendHex(base, target, ratio) {
+    const b = parseInt(base.slice(1), 16), t = parseInt(target.slice(1), 16);
+    const br = (b >> 16) & 255, bg = (b >> 8) & 255, bb = b & 255;
+    const tr = (t >> 16) & 255, tg = (t >> 8) & 255, tb = t & 255;
+    const mix = (a, z) => Math.round(a + (z - a) * ratio);
+    return '#' + [mix(br, tr), mix(bg, tg), mix(bb, tb)].map(v => v.toString(16).padStart(2, '0')).join('');
+  }
+  function renderCharts() {
+    const c = tokenColors();
+    const commonTheme = {
+      chart: { fontFamily: 'JetBrains Mono, monospace', toolbar: { show: false }, background: 'transparent' },
+      grid: { borderColor: c.rule },
+      tooltip: { theme: document.documentElement.classList.contains('dark') ? 'dark' : 'light' },
+    };
+    if (trendChart) trendChart.destroy();
+    trendChart = new ApexCharts(document.getElementById('chart-trend'), {
+      ...commonTheme,
+      chart: { ...commonTheme.chart, type: 'area', height: 220 },
+      series: [{ name: 'Deployments', data: [12, 19, 14, 25, 22, 30, 28] }],
+      colors: [c.brand],
+      fill: { type: 'gradient', gradient: { opacityFrom: 0.35, opacityTo: 0.02 } },
+      stroke: { curve: 'smooth', width: 2 },
+      xaxis: { categories: ['T2','T3','T4','T5','T6','T7','CN'], labels: { style: { colors: c.dim, fontSize: '10px' } }, axisBorder: { color: c.rule } },
+      yaxis: { labels: { style: { colors: c.dim, fontSize: '10px' } } },
+      dataLabels: { enabled: false },
+    });
+    trendChart.render();
+
+    if (donutChart) donutChart.destroy();
+    donutChart = new ApexCharts(document.getElementById('chart-donut'), {
+      ...commonTheme,
+      chart: { ...commonTheme.chart, type: 'donut', height: 220 },
+      series: [68, 22, 10],
+      labels: ['Success', 'Pending', 'Failed'],
+      colors: [c.ok, c.warn, c.err],
+      legend: { position: 'bottom', labels: { colors: c.ink2 }, fontSize: '12px' },
+      dataLabels: { enabled: true, style: { fontSize: '11px' } },
+    });
+    donutChart.render();
+
+    // Stacked bar — Data Operations (ref: Neon-style multi-category activity)
+    if (stackedChart) stackedChart.destroy();
+    stackedChart = new ApexCharts(document.getElementById('chart-stacked'), {
+      ...commonTheme,
+      chart: { ...commonTheme.chart, type: 'bar', height: 220, stacked: true },
+      series: [
+        { name: 'Created',  data: [8, 12, 6, 14, 9, 11, 7] },
+        { name: 'Modified', data: [5, 7, 9, 6, 8, 5, 6] },
+        { name: 'Deleted',  data: [2, 3, 1, 4, 2, 3, 2] },
+      ],
+      colors: [c.ok, c.brand, c.warn],
+      plotOptions: { bar: { columnWidth: '55%', borderRadius: 2 } },
+      xaxis: { categories: ['3:12','8:12','1:12','6:12','11:12','4:12','9:12'], labels: { style: { colors: c.dim, fontSize: '10px' } }, axisBorder: { color: c.rule } },
+      yaxis: { labels: { style: { colors: c.dim, fontSize: '10px' } } },
+      legend: { position: 'bottom', labels: { colors: c.ink2 }, fontSize: '11px' },
+      dataLabels: { enabled: false },
+    });
+    stackedChart.render();
+
+    // Radial bar — Team Workload / capacity gauge
+    if (radialChart) radialChart.destroy();
+    radialChart = new ApexCharts(document.getElementById('chart-radial'), {
+      ...commonTheme,
+      chart: { ...commonTheme.chart, type: 'radialBar', height: 220 },
+      series: [68],
+      colors: [c.brand],
+      plotOptions: { radialBar: {
+        hollow: { size: '65%' },
+        dataLabels: { value: { fontSize: '24px', fontWeight: 700, color: c.ink2, formatter: v => v + '%' },
+                       name: { show: false } },
+      } },
+      labels: ['Capacity'],
+    });
+    radialChart.render();
+
+    // Multi-line — Project Performance (multiple series comparison)
+    if (multilineChart) multilineChart.destroy();
+    multilineChart = new ApexCharts(document.getElementById('chart-multiline'), {
+      ...commonTheme,
+      chart: { ...commonTheme.chart, type: 'line', height: 220 },
+      series: [
+        { name: 'E-Commerce', data: [70, 82, 75, 90, 93] },
+        { name: 'Mobile App', data: [60, 55, 68, 72, 89] },
+        { name: 'Marketing',  data: [40, 52, 48, 65, 75] },
+        { name: 'CRM',        data: [45, 38, 55, 50, 61] },
+      ],
+      colors: [c.purple, c.err, c.ok, c.warn],
+      stroke: { curve: 'smooth', width: 2 },
+      xaxis: { categories: ['1/6','2/6','3/6','4/6','5/6'], labels: { style: { colors: c.dim, fontSize: '10px' } }, axisBorder: { color: c.rule } },
+      yaxis: { labels: { style: { colors: c.dim, fontSize: '10px' } } },
+      legend: { position: 'bottom', labels: { colors: c.ink2 }, fontSize: '11px' },
+      dataLabels: { enabled: false },
+    });
+    multilineChart.render();
+
+    // Heatmap — GitHub-contributions-style deploy activity grid
+    if (heatmapChart) heatmapChart.destroy();
+    const days = ['CN','T7','T6','T5','T4','T3','T2'];
+    const heatmapSeries = days.map(day => ({
+      name: day,
+      data: Array.from({ length: 26 }, (_, i) => ({ x: `W${i + 1}`, y: heatmapSeed[day][i] })),
+    }));
+    heatmapChart = new ApexCharts(document.getElementById('chart-heatmap'), {
+      ...commonTheme,
+      chart: { ...commonTheme.chart, type: 'heatmap', height: 260, toolbar: { show: false } },
+      series: heatmapSeries,
+      plotOptions: { heatmap: {
+        radius: 2,
+        colorScale: { ranges: [
+          { from: 0, to: 0, color: c.rule, name: 'Không có' },
+          { from: 1, to: 2, color: blendHex(c.surface, c.brand, 0.35), name: 'Ít' },
+          { from: 3, to: 5, color: blendHex(c.surface, c.brand, 0.7), name: 'Vừa' },
+          { from: 6, to: 999, color: c.brand, name: 'Nhiều' },
+        ] },
+      } },
+      xaxis: { labels: { show: false }, axisBorder: { show: false }, axisTicks: { show: false } },
+      yaxis: { labels: { style: { colors: c.dim, fontSize: '10px' } } },
+      legend: { position: 'bottom', labels: { colors: c.ink2 }, fontSize: '11px' },
+      dataLabels: { enabled: false },
+      tooltip: { ...commonTheme.tooltip, y: { formatter: v => v + ' deploys' } },
+    });
+    heatmapChart.render();
+  }
+  // Fixed seed data (not Math.random) so the pattern stays stable across re-renders/theme toggles
+  const heatmapSeed = {
+    CN: [0,1,0,2,0,1,0,3,0,1,2,0,4,0,1,0,2,0,5,1,0,2,0,1,3,0],
+    T7: [0,2,1,3,0,2,4,1,0,3,2,1,5,2,0,3,1,4,6,2,1,3,0,2,4,1],
+    T6: [2,4,3,5,2,4,6,3,2,5,4,3,7,5,2,4,3,6,8,4,3,5,2,4,6,3],
+    T5: [1,3,2,4,1,3,5,2,1,4,3,2,6,4,1,3,2,5,7,3,2,4,1,3,5,2],
+    T4: [3,5,4,6,3,5,7,4,3,6,5,4,8,6,3,5,4,7,9,5,4,6,3,5,7,4],
+    T3: [2,4,3,5,2,4,6,3,2,5,4,3,7,5,2,4,3,6,8,4,3,5,2,4,6,3],
+    T2: [1,2,1,3,1,2,4,2,1,3,2,1,5,3,1,2,1,4,6,2,1,3,1,2,4,2],
+  };
+  renderCharts();
+  // Re-render on theme toggle — chart canvas won't repaint on its own when CSS vars change
+  document.querySelector('.dark-toggle').addEventListener('click', () => setTimeout(renderCharts, 0));
+</script>
+</body>
+</html>

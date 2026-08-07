@@ -1,10 +1,5 @@
 import { getDb } from "@/lib/db";
-import {
-  createSession,
-  setSessionCookie,
-  verifyPassword,
-  HttpError,
-} from "@/lib/auth";
+import { verifyPassword, HttpError } from "@/lib/auth";
 import { fail, ok, str } from "@/lib/api";
 
 export async function POST(req: Request) {
@@ -23,8 +18,8 @@ export async function POST(req: Request) {
     if (!row || !verifyPassword(password, row.password_hash))
       throw new HttpError(401, "Email hoặc mật khẩu không đúng.");
 
-    const { token, expires } = createSession(row.id);
-    await setSessionCookie(token, expires);
+    // ponytail: login qua credentials nên dùng signIn("credentials") ở client thay vì route này.
+    // Route này giữ lại cho backward-compat, chỉ trả user info (không tạo session thủ công nữa).
     return ok({ user: { id: row.id, email: row.email, name: row.name } });
   } catch (e) {
     return fail(e);

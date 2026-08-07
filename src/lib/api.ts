@@ -7,6 +7,10 @@ export function ok<T>(data: T, status = 200) {
 
 export function fail(error: unknown) {
   if (error instanceof HttpError) {
+    // Lỗi 5xx (backup GitHub, AI...) in ra terminal kèm chi tiết — nếu không
+    // log ở đây thì server chỉ hiện dòng access log "POST ... 502" trống
+    // trơn, không thấy được lý do thật (401 token sai, repo trống, v.v.).
+    if (error.status >= 500) console.error("[poco-biller]", error.message);
     return NextResponse.json({ error: error.message }, { status: error.status });
   }
   const message = error instanceof Error ? error.message : "Lỗi không xác định";

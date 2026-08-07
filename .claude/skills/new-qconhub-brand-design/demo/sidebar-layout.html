@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QC OneHub — Sidebar Layout Demo</title>
+  <link rel="stylesheet" href="../assets/tokens.css">
+  <link rel="stylesheet" href="../assets/components.css">
+  <style>
+    /* App shell, sidebar (brand/footer/quota/collapsed/mobile), and
+       content-header/-body are all shared components — see
+       ../assets/components.css (.app-shell, .sidebar*, .content-*). */
+    html, body { height: 100%; }
+    body { display: flex; }
+
+    .section { margin-top: 32px; }
+    .section:first-child { margin-top: 0; }
+    .section-title {
+      font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.14em; color: var(--dim);
+      margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--rule);
+    }
+    .grid-4 { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; }
+    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; }
+  </style>
+</head>
+<body>
+
+<div class="brand-top-accent" style="position:fixed;top:0;left:0;right:0;z-index:300;"></div>
+<button class="btn ghost sm" onclick="var h=document.documentElement; h.classList.toggle('dark'); h.classList.toggle('light', !h.classList.contains('dark'));" style="position:fixed;top:10px;right:20px;z-index:200;">☀ / ☾ Dark</button>
+
+<div class="app-shell" style="margin-top:3px;">
+
+  <!-- Left sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="sidebar-brand-logo">QC</div>
+      <div class="sidebar-brand-text">OneHub</div>
+    </div>
+
+    <div class="sidebar-section-label">Tổng quan</div>
+    <a class="sidebar-link active" href="#">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+      <span>Dashboard</span>
+    </a>
+    <a class="sidebar-link" href="#">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10M18 20V4M6 20v-4"/></svg>
+      <span>Báo cáo</span>
+    </a>
+
+    <div class="sidebar-section-label">CI/CD</div>
+    <a class="sidebar-link" href="#">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l-6-6 6-6M15 6l6 6-6 6"/></svg>
+      <span>Pipelines</span>
+      <span class="count">7</span>
+    </a>
+    <a class="sidebar-link" href="#">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12"/></svg>
+      <span>Deployments</span>
+    </a>
+    <a class="sidebar-link" href="#">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 17l6-6-6-6M12 19h8"/></svg>
+      <span>Logs</span>
+    </a>
+    <a class="sidebar-link" href="#">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span>Cấu hình</span>
+    </a>
+
+    <div class="sidebar-section-label">Quản trị</div>
+    <a class="sidebar-link" href="#">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <span>Người dùng</span>
+    </a>
+    <a class="sidebar-link" href="#">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41L13.42 20.6a2 2 0 0 1-2.83 0L2.5 12.5V2.5h10l8.09 8.09a2 2 0 0 1 0 2.82z"/><circle cx="7" cy="7" r="1"/></svg>
+      <span>Môi trường</span>
+    </a>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-footer-row">
+        <div class="sidebar-user-avatar-wrap" id="quota-avatar-wrap" data-quota-label="Quota: 72%">
+          <svg class="quota-ring" viewBox="0 0 34 34">
+            <circle class="track" cx="17" cy="17" r="15"/>
+            <circle class="fill" id="quota-ring-fill" cx="17" cy="17" r="15"
+              stroke-dasharray="94.25" stroke-dashoffset="26.39"/>
+          </svg>
+          <div class="sidebar-user-avatar">HN</div>
+        </div>
+        <div class="sidebar-user-info">
+          <div class="sidebar-user-name">Huy Ngo</div>
+          <div class="sidebar-user-role">DevOps Engineer</div>
+        </div>
+        <button class="sidebar-collapse-btn" style="margin-left:auto;" aria-label="Thu gọn sidebar" onclick="document.getElementById('sidebar').classList.toggle('collapsed')">
+          <svg viewBox="0 0 12 12" fill="none"><path d="M8 2L4 6l4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+      <div class="sidebar-quota-bar">
+        <div class="sidebar-quota-header">
+          <span class="sidebar-quota-label">Quota</span>
+          <span class="sidebar-quota-pct" id="quota-pct-label">72%</span>
+        </div>
+        <div class="sidebar-quota-track">
+          <div class="sidebar-quota-fill" id="quota-bar-fill" style="width:72%;"></div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Content area -->
+  <div class="content-area">
+    <div class="content-header">
+      <div>
+        <div class="content-header-title">Dashboard</div>
+        <div class="content-header-crumb"><strong>OneHub</strong> <span class="sep">·</span> <strong>CI/CD Console</strong> <span class="sep">·</span> Production</div>
+      </div>
+      <div class="row" style="display:flex;gap:10px;align-items:center;">
+        <!-- Language switch -->
+        <div class="lang-switch" id="lang-switch">
+          <button class="lang-switch-trigger" onclick="event.stopPropagation(); document.getElementById('lang-switch').classList.toggle('open');">
+            <span class="flag">&#127894;</span>
+            <span>VI</span>
+            <svg class="chev" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="lang-popup">
+            <button class="lang-option active" data-lang="vi"><span class="flag">&#127894;</span> Tiếng Việt</button>
+            <button class="lang-option" data-lang="en"><span class="flag">&#127468;&#127463;</span> English</button>
+          </div>
+        </div>
+
+        <!-- Divider between global chrome and page actions -->
+        <div style="width:1px;height:22px;background:var(--border);margin:0 2px;"></div>
+
+        <select class="select" style="min-width:180px;">
+          <option>Production</option>
+          <option>Staging</option>
+        </select>
+        <button class="btn primary sm">+ Pipeline mới</button>
+
+        <!-- Divider between page actions and remaining global chrome -->
+        <div style="width:1px;height:22px;background:var(--border);margin:0 2px;"></div>
+
+        <!-- Dark / light toggle -->
+        <button class="btn ghost sm" aria-label="Chuyển giao diện sáng/tối" onclick="var h=document.documentElement; h.classList.toggle('dark'); h.classList.toggle('light', !h.classList.contains('dark'));">
+          &#9728; / &#9789;
+        </button>
+
+        <!-- Notification bell -->
+        <div class="notif-bell" id="notif-bell">
+          <button class="notif-bell-trigger" aria-label="Thông báo" onclick="event.stopPropagation(); document.getElementById('notif-bell').classList.toggle('open');">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            <span class="notif-badge">3</span>
+          </button>
+          <div class="notif-popup">
+            <div class="notif-popup-header">
+              <span class="notif-popup-title">Thông báo</span>
+              <button class="notif-mark-all">Đánh dấu đã đọc</button>
+            </div>
+            <div class="notif-list">
+              <div class="notif-item unread">
+                <div class="notif-item-icon err">!</div>
+                <div class="notif-item-body">
+                  <div class="notif-item-title">Deploy thất bại</div>
+                  <div class="notif-item-desc">test-integration lỗi kết nối DB</div>
+                  <div class="notif-item-time">12 phút trước</div>
+                </div>
+                <div class="notif-item-dot" style="background:var(--err);"></div>
+              </div>
+              <div class="notif-item">
+                <div class="notif-item-icon ok">&#10003;</div>
+                <div class="notif-item-body">
+                  <div class="notif-item-title">Deploy thành công</div>
+                  <div class="notif-item-desc">deploy-prod-v2.4.1 đã lên Production</div>
+                  <div class="notif-item-time">1 giờ trước</div>
+                </div>
+              </div>
+            </div>
+            <div class="notif-popup-footer">
+              <a href="#">Xem tất cả thông báo</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Basic user info (passive, no dropdown — account actions stay on sidebar avatar).
+             Quota ring reuses the same .sidebar-user-avatar-wrap/.quota-ring pattern, own IDs so
+             setQuota() can drive both the sidebar and topbar copies together. -->
+        <div style="display:flex;align-items:center;gap:8px;padding-right:8px;">
+          <div class="sidebar-user-avatar-wrap" id="topbar-quota-avatar-wrap" data-quota-label="Quota: 72%">
+            <svg class="quota-ring" viewBox="0 0 34 34">
+              <circle class="track" cx="17" cy="17" r="15"/>
+              <circle class="fill" id="topbar-quota-ring-fill" cx="17" cy="17" r="15"
+                stroke-dasharray="94.25" stroke-dashoffset="26.39"/>
+            </svg>
+            <div class="sidebar-user-avatar">HN</div>
+          </div>
+          <span style="font-size:12.5px;font-weight:600;color:var(--ink-2);white-space:nowrap;">Huy Ngo</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="content-body">
+
+      <div class="section">
+        <div class="section-title">Tổng quan</div>
+        <div class="grid-4">
+          <div class="stat-card">
+            <div class="stat-label">Total Deployments</div>
+            <div class="stat-value">1,284</div>
+            <div class="stat-delta up">↑ 12% so với tuần trước</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Success Rate</div>
+            <div class="stat-value">98.4%</div>
+            <div class="stat-delta up">↑ 0.6pp</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Avg Build Time</div>
+            <div class="stat-value">3m 42s</div>
+            <div class="stat-delta down">↓ 18s chậm hơn</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Active Pipelines</div>
+            <div class="stat-value">7</div>
+            <div class="stat-delta">Không đổi</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Recent Pipelines</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Pipeline</th>
+                <th>Method</th>
+                <th>Status</th>
+                <th>Duration</th>
+                <th>Triggered</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="row-active">
+                <td><strong>deploy-prod-v2.4.1</strong></td>
+                <td><span class="method POST">POST</span></td>
+                <td><span class="badge green">Active</span></td>
+                <td style="font-family:var(--font-mono);font-size:12px;">2m 14s</td>
+                <td style="color:var(--muted);font-size:12px;">2 phút trước</td>
+                <td><button class="btn ghost sm">Logs</button></td>
+              </tr>
+              <tr class="row-pending">
+                <td><strong>build-staging</strong></td>
+                <td><span class="method PUT">PUT</span></td>
+                <td><span class="badge yellow">Pending</span></td>
+                <td style="font-family:var(--font-mono);font-size:12px;">—</td>
+                <td style="color:var(--muted);font-size:12px;">5 phút trước</td>
+                <td><button class="btn ghost sm">Logs</button></td>
+              </tr>
+              <tr class="row-error">
+                <td><strong>test-integration</strong></td>
+                <td><span class="method GET">GET</span></td>
+                <td><span class="badge red">Failed</span></td>
+                <td style="font-family:var(--font-mono);font-size:12px;">0m 47s</td>
+                <td style="color:var(--muted);font-size:12px;">12 phút trước</td>
+                <td><button class="btn ghost sm">Logs</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Pipeline &amp; Logs</div>
+        <div class="grid-2">
+          <div class="panel">
+            <div class="panel-header">
+              <span class="panel-title">Deploy to Production</span>
+              <span class="badge blue">Đang chạy</span>
+            </div>
+            <div class="panel-body">
+              <div class="pipeline-steps">
+                <div class="pipeline-step done">
+                  <div class="pipeline-step-dot">✓</div>
+                  <div class="pipeline-step-body">
+                    <div class="pipeline-step-title">Checkout source</div>
+                    <div class="pipeline-step-meta"><span class="mono">main@a3f21c9</span> · 4s</div>
+                  </div>
+                </div>
+                <div class="pipeline-step active">
+                  <div class="pipeline-step-dot">2</div>
+                  <div class="pipeline-step-body">
+                    <div class="pipeline-step-title">Build image</div>
+                    <div class="pipeline-step-meta">đang chạy…</div>
+                  </div>
+                </div>
+                <div class="pipeline-step">
+                  <div class="pipeline-step-dot">3</div>
+                  <div class="pipeline-step-body">
+                    <div class="pipeline-step-title">Deploy</div>
+                    <div class="pipeline-step-meta" style="color:var(--faint);">Đang chờ</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-header">
+              <span class="panel-title">Live Logs</span>
+            </div>
+            <div class="panel-body">
+              <div class="log-console" style="max-height:220px;">
+                <div class="log-line info"><span class="ts">17:24:01</span><span class="lvl">INFO</span><span>Starting deploy-prod-v2.4.1 rolling update...</span></div>
+                <div class="log-line info"><span class="ts">17:24:03</span><span class="lvl">INFO</span><span>Pulling image registry.onehub.internal/app:v2.4.1</span></div>
+                <div class="log-line ok"><span class="ts">17:24:18</span><span class="lvl">OK</span><span>Image pulled successfully (312MB)</span></div>
+                <div class="log-line warn"><span class="ts">17:24:22</span><span class="lvl">WARN</span><span>Readiness probe slow to respond (2.1s), retrying...</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // Quota color tiers: ≤60% → ok (green), 61–85% → warn (orange), >85% → err (red)
+  // Usage: setQuota(72)  — updates ring, bar, label, tooltip, colors everywhere
+  function quotaTier(pct) { return pct > 85 ? 'tier-err' : pct > 60 ? 'tier-warn' : ''; }
+
+  function setQuota(pct) {
+    pct = Math.max(0, Math.min(100, pct));
+    const tier = quotaTier(pct);
+    const circ = 2 * Math.PI * 15; // 94.25 — r=15
+    const offset = circ * (1 - pct / 100);
+
+    // Ring (collapsed view)
+    const ring = document.getElementById('quota-ring-fill');
+    ring.setAttribute('stroke-dashoffset', offset.toFixed(2));
+    ring.className.baseVal = 'fill' + (tier ? ' ' + tier : '');
+
+    // Topbar ring (mirrors the sidebar ring 1:1)
+    const topbarRing = document.getElementById('topbar-quota-ring-fill');
+    if (topbarRing) {
+      topbarRing.setAttribute('stroke-dashoffset', offset.toFixed(2));
+      topbarRing.className.baseVal = 'fill' + (tier ? ' ' + tier : '');
+    }
+
+    // Bar fill (expanded view)
+    const bar = document.getElementById('quota-bar-fill');
+    bar.style.width = pct + '%';
+    bar.className = 'sidebar-quota-fill' + (tier ? ' ' + tier : '');
+
+    // % label
+    const label = document.getElementById('quota-pct-label');
+    label.textContent = pct + '%';
+    label.className = 'sidebar-quota-pct' + (tier ? ' ' + tier : '');
+
+    // Tooltip on avatar
+    document.getElementById('quota-avatar-wrap').dataset.quotaLabel = 'Quota: ' + pct + '%';
+    const topbarAvatarWrap = document.getElementById('topbar-quota-avatar-wrap');
+    if (topbarAvatarWrap) topbarAvatarWrap.dataset.quotaLabel = 'Quota: ' + pct + '%';
+  }
+
+  // Initialize with 72%
+  setQuota(72);
+
+  // Demo: cycle through values to show color changes
+  const demoValues = [35, 58, 72, 88, 95, 72];
+  let demoIdx = 0;
+  setInterval(() => { demoIdx = (demoIdx + 1) % demoValues.length; setQuota(demoValues[demoIdx]); }, 3000);
+
+  // Notification bell + language switch — close on outside click
+  document.addEventListener('click', (e) => {
+    const bell = document.getElementById('notif-bell');
+    if (bell && !bell.contains(e.target)) bell.classList.remove('open');
+    const lang = document.getElementById('lang-switch');
+    if (lang && !lang.contains(e.target)) lang.classList.remove('open');
+  });
+
+  function setLang(lang) {
+    document.querySelectorAll('.lang-option').forEach(el => el.classList.toggle('active', el.dataset.lang === lang));
+    document.getElementById('lang-switch').classList.remove('open');
+  }
+  document.querySelectorAll('.lang-option').forEach(el => el.addEventListener('click', () => setLang(el.dataset.lang)));
+</script>
+</body>
+</html>

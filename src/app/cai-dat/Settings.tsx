@@ -1,20 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { apiJson, rememberGroupId, resolveGroup } from "@/lib/client";
 import type { Group, Member, SessionUser } from "@/lib/types";
 import GroupPicker from "@/components/GroupPicker";
+import PullToRefresh from "@/components/PullToRefresh";
 import CopyButton from "@/components/CopyButton";
 import {
   IconAlert,
-  IconCloudUp,
   IconFileCsv,
-  IconFileJson,
   IconMemberAdd,
   IconOk,
   IconSignOut,
-  IconSparkles,
   IconSpinner,
   IconTrash,
   ICON_SIZE,
@@ -32,18 +31,6 @@ type AiInfo = {
 
 /** Kết quả bấm "Kiểm tra kết nối". */
 type AiPing = { ok: boolean; ms: number; sample?: string; message?: string };
-
-type BackupInfo = {
-  configured: boolean;
-  history: {
-    id: number;
-    kind: string;
-    target: string;
-    status: string;
-    detail: string;
-    createdAt: string;
-  }[];
-};
 
 type Bank = {
   id: string;
@@ -70,7 +57,6 @@ export default function Settings({
   const [groups, setGroups] = useState(initialGroups);
   const [group, setGroup] = useState<Group | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
-  const [backup, setBackup] = useState<BackupInfo | null>(null);
   const [ai, setAi] = useState<AiInfo | null>(null);
   const [aiError, setAiError] = useState("");
   const [ping, setPing] = useState<AiPing | null>(null);
@@ -88,7 +74,6 @@ export default function Settings({
   const [inviteCode, setInviteCode] = useState("");
   const [memberName, setMemberName] = useState("");
   const [memberEmail, setMemberEmail] = useState("");
-  const importRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => setGroup(resolveGroup(groups)), [groups]);
 
@@ -96,12 +81,10 @@ export default function Settings({
     if (!group) return;
     setError("");
     try {
-      const [m, b] = await Promise.all([
-        apiJson<{ members: Member[] }>(`/api/groups/${group.id}/members`),
-        apiJson<BackupInfo>(`/api/groups/${group.id}/backup-drive`),
-      ]);
+      const m = await apiJson<{ members: Member[] }>(
+        `/api/groups/${group.id}/members`
+      );
       setMembers(m.members);
-      setBackup(b);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Không tải được cài đặt.");
     }
@@ -172,6 +155,7 @@ export default function Settings({
   }
 
   return (
+    <PullToRefresh onRefresh={load}>
     <div className="shell">
       <header className="topbar">
         <span className="brand-mark" aria-hidden="true" />
@@ -219,16 +203,10 @@ export default function Settings({
             <button
               type="button"
               className="btn btn-sm"
-              onClick={() =>
-                act("logout", async () => {
-                  await apiJson("/api/auth/logout", { method: "POST" });
-                  router.replace("/dang-nhap");
-                  router.refresh();
-                })
-              }
+              onClick={() => signOut({ callbackUrl: "/dang-nhap" })}
               disabled={busy === "logout"}
             >
-              <IconSignOut size={ICON_SIZE.sm} /> Đăng xuất
+              {busy === "logout" ? <IconSpinner size={ICON_SIZE.sm} /> : <IconSignOut size={ICON_SIZE.sm} />} Đăng xuất
             </button>
           </div>
         </div>
@@ -593,12 +571,6 @@ export default function Settings({
             <div className="row-wrap">
               <a
                 className="btn btn-sm"
-                href={`/api/groups/${group.id}/export?format=json`}
-              >
-                <IconFileJson size={ICON_SIZE.sm} /> Tải JSON
-              </a>
-              <a
-                className="btn btn-sm"
                 href={`/api/groups/${group.id}/export?format=csv`}
               >
                 <IconFileCsv size={ICON_SIZE.sm} /> Tải CSV bill
@@ -610,229 +582,17 @@ export default function Settings({
                 <IconFileCsv size={ICON_SIZE.sm} /> Tải CSV thanh toán
               </a>
             </div>
-
-            {/* Ẩn phần Drive đi nếu chưa cấu hình */}
-            {backup?.configured && (
-              <>
-                <div className="divider" style={{ margin: "4px 0" }} />
-                <div>
-                  <p className="label" style={{ marginBottom: 6 }}>
-                    Google Drive
-                  </p>
-                  <button
-                    type="button"
-                    className="btn btn-block"
-                    disabled={busy === "drive"}
-                    onClick={() =>
-                      act("drive", async () => {
-                        const res = await apiJson<{
-                          file: { name: string; webViewLink?: string };
-                          history: BackupInfo["history"];
-                        }>(`/api/groups/${group.id}/backup-drive`, {
-                          method: "POST",
-                        });
-                        setBackup((b) =>
-                          b ? { ...b, history: res.history } : b
-                        );
-                        setNotice(`Đã đẩy ${res.file.name} lên Google Drive.`);
-                      })
-                    }
-                  >
-                    {busy === "drive" ? (
-                      <>
-                        <IconSpinner size={ICON_SIZE.sm} /> Đang đẩy lên Drive
-                      </>
-                    ) : (
-                      <>
-                        <IconCloudUp size={ICON_SIZE.sm} /> Sao lưu CSV lên Drive
-                        ngay
-                      </>
-                    )}
-                  </button>
-
-                  {backup && backup.history.length > 0 && (
-                    <div style={{ marginTop: 10 }}>
-                      <p className="section-title" style={{ marginBottom: 4 }}>
-                        Lần sao lưu gần đây
-                      </p>
-                      {backup.history.map((h) => (
-                        <p key={h.id} className="faint tiny" style={{ margin: "2px 0" }}>
-                          {h.createdAt} · {h.status === "ok" ? "Thành công" : "Lỗi"} ·{" "}
-                          {h.detail}
-                        </p>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
-
-            {isAdmin && (
-              <>
-                <div className="divider" style={{ margin: "4px 0" }} />
-                <div>
-                  <p className="label" style={{ marginBottom: 6 }}>
-                    Nhập lại từ file JSON
-                  </p>
-                  <input
-                    ref={importRef}
-                    type="file"
-                    accept="application/json,.json"
-                    style={{ display: "none" }}
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (!f) return;
-                      void act("import", async () => {
-                        const form = new FormData();
-                        form.set("file", f);
-                        const res = await apiJson<{
-                          result: {
-                            billsAdded: number;
-                            billsSkipped: number;
-                            settlementsAdded: number;
-                          };
-                        }>(`/api/groups/${group.id}/import`, {
-                          method: "POST",
-                          body: form,
-                        });
-                        setNotice(
-                          `Đã nhập ${res.result.billsAdded} bill và ${res.result.settlementsAdded} khoản thanh toán. Bỏ qua ${res.result.billsSkipped} bill trùng hoặc không khớp thành viên.`
-                        );
-                        if (importRef.current) importRef.current.value = "";
-                      });
-                    }}
-                  />
-                  <button
-                    type="button"
-                    className="btn btn-block"
-                    disabled={busy === "import"}
-                    onClick={() => importRef.current?.click()}
-                  >
-                    {busy === "import" ? (
-                      <>
-                        <IconSpinner size={ICON_SIZE.sm} /> Đang nhập…
-                      </>
-                    ) : (
-                      <>
-                        <IconFileJson size={ICON_SIZE.sm} /> Chọn file JSON
-                      </>
-                    )}
-                  </button>
-                  <p className="hint">
-                    Ghép thành viên theo email. Bill trùng ngày, tên và số tiền sẽ
-                    được bỏ qua nên nhập lại nhiều lần vẫn an toàn.
-                  </p>
-                </div>
-              </>
-            )}
+            {/*
+              Khối "Sao lưu lên GitHub" đã ẩn khỏi UI theo yêu cầu: backup DB
+              chạy hoàn toàn tự động qua crontab gọi /api/cron/backup. Endpoint
+              /api/backup-db vẫn còn để gọi tay khi cần debug.
+            */}
           </div>
         </section>
       )}
 
-      {/* Cấu hình AI — chỉ đọc, đặt qua biến môi trường. Ẩn đi nếu chưa có key. */}
-      {isAdmin && ai?.hasKey && (
-        <section className="section">
-          <div className="section-head">
-            <h2 className="section-title">Trợ lý AI</h2>
-          </div>
-          <div className="card card-pad stack">
-            {aiError ? (
-              <p className="error" role="alert" style={{ margin: 0 }}>
-                <IconAlert size={ICON_SIZE.sm} />
-                <span>{aiError}</span>
-              </p>
-            ) : (
-              <>
-                <div className="row" style={{ gap: 8 }}>
-                  <IconSparkles size={ICON_SIZE.sm} />
-                  <span className="label" style={{ margin: 0 }}>
-                    Đang gọi
-                  </span>
-                  <span className="spacer" />
-                  <span className={`tag ${ai.hasKey ? "tag-blue" : ""}`}>
-                    {ai.hasKey ? "Đã có API key" : "Chưa có API key"}
-                  </span>
-                </div>
-
-                <dl className="kv">
-                  <dt>Endpoint</dt>
-                  <dd className="kv-mono">{ai.host}</dd>
-                  <dt>Model</dt>
-                  <dd className="kv-mono">{ai.model}</dd>
-                  <dt>Trần token</dt>
-                  <dd className="kv-mono num">{ai.maxTokens}</dd>
-                  <dt>Kiểu xác thực</dt>
-                  <dd className="kv-mono">{ai.authStyle}</dd>
-                  <dt>Chờ tối đa</dt>
-                  <dd className="kv-mono num">
-                    {Math.round(ai.timeoutMs / 1000)} giây
-                  </dd>
-                </dl>
-
-                <div className="divider" style={{ margin: "2px 0" }} />
-
-                <button
-                  type="button"
-                  className="btn btn-block"
-                  disabled={busy === "ping"}
-                  onClick={() =>
-                    act("ping", async () => {
-                      setPing(null);
-                      setPing(
-                        await apiJson<AiPing>("/api/ai/config", {
-                          method: "POST",
-                        })
-                      );
-                    })
-                  }
-                >
-                  {busy === "ping" ? (
-                    <>
-                      <IconSpinner size={ICON_SIZE.sm} /> Đang gọi thử…
-                    </>
-                  ) : (
-                    <>
-                      <IconSparkles size={ICON_SIZE.sm} /> Kiểm tra kết nối
-                    </>
-                  )}
-                </button>
-
-                {ping && (
-                  <p
-                    className={ping.ok ? "notice" : "error"}
-                    role="status"
-                    style={{ margin: 0 }}
-                  >
-                    {ping.ok ? (
-                      <IconOk size={ICON_SIZE.sm} />
-                    ) : (
-                      <IconAlert size={ICON_SIZE.sm} />
-                    )}
-                    <span>
-                      {ping.ok
-                        ? `Gọi được, mất ${(ping.ms / 1000).toFixed(1)} giây. Model trả về: ${ping.sample || "(rỗng)"}`
-                        : ping.message}
-                    </span>
-                  </p>
-                )}
-
-                {ping &&
-                  !ping.ok &&
-                  ping.message?.includes("NODE_EXTRA_CA_CERTS") && (
-                    <p className="hint" style={{ margin: 0 }}>
-                      Câu lệnh khởi động lại kèm chứng chỉ CA nội bộ:{" "}
-                      <code className="code-inline">
-                        NODE_EXTRA_CA_CERTS=/duong/dan/ca.pem npm run dev
-                      </code>
-                      . Phải đặt ở dòng lệnh — ghi vào{" "}
-                      <code className="code-inline">.env</code> không có tác dụng.
-                    </p>
-                  )}
-              </>
-            )}
-          </div>
-        </section>
-      )}
+      {/* ponytail: section Trợ lý AI ẩn khỏi UI — hiện lại khi cần debug AI config */}
     </div>
+    </PullToRefresh>
   );
 }

@@ -1,12 +1,9 @@
-import { cookies } from "next/headers";
-import { clearSessionCookie, destroySession, SESSION_COOKIE } from "@/lib/auth";
 import { fail, ok } from "@/lib/api";
 
 export async function POST() {
   try {
-    const token = (await cookies()).get(SESSION_COOKIE)?.value;
-    if (token) destroySession(token);
-    await clearSessionCookie();
+    // ponytail: logout giờ do NextAuth xử lý qua signOut() ở client.
+    // Route này giữ lại cho backward-compat.
     return ok({ ok: true });
   } catch (e) {
     return fail(e);

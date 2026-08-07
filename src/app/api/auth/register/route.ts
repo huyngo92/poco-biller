@@ -1,10 +1,5 @@
 import { getDb } from "@/lib/db";
-import {
-  createSession,
-  hashPassword,
-  setSessionCookie,
-  HttpError,
-} from "@/lib/auth";
+import { hashPassword, HttpError } from "@/lib/auth";
 import { createGroup } from "@/lib/queries";
 import { fail, ok, str } from "@/lib/api";
 
@@ -32,8 +27,7 @@ export async function POST(req: Request) {
     // Người mới luôn có sẵn một nhóm để bắt đầu ghi bill ngay
     createGroup(userId, `Nhóm của ${name}`);
 
-    const { token, expires } = createSession(userId);
-    await setSessionCookie(token, expires);
+    // ponytail: register giờ chỉ tạo user, client tự signIn("credentials") sau đó.
     return ok({ user: { id: userId, email, name } }, 201);
   } catch (e) {
     return fail(e);

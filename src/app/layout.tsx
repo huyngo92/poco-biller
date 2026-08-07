@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import AuthProvider from "@/lib/AuthProvider";
 
 export const metadata: Metadata = {
   title: "Poco Biller — chia tiền nhóm",
@@ -11,6 +12,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
+  viewportFit: "cover",
   // Thanh trạng thái hoà vào nền grouped của app ở cả hai chế độ
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#f2f2f7" },
@@ -25,7 +27,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="vi">
-      <body>{children}</body>
+      <body>
+        <AuthProvider>
+          {children}
+        </AuthProvider>
+      </body>
     </html>
   );
 }

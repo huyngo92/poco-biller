@@ -377,6 +377,111 @@ function describeFetchFailure(e, host) {
   })`;
 }
 
+/* --- bản sao src/lib/cron-expr.ts --- */
+
+const CRON_RANGES = [
+  [0, 59],
+  [0, 23],
+  [1, 31],
+  [1, 12],
+  [0, 6],
+];
+const CRON_FIELD_NAMES = ["phút", "giờ", "ngày trong tháng", "tháng", "thứ"];
+
+function parseCronField(raw, index) {
+  const [min, max] = CRON_RANGES[index];
+  const out = new Set();
+
+  for (const part of raw.split(",")) {
+    const piece = part.trim();
+    if (!piece) throw new Error(`Trường ${CRON_FIELD_NAMES[index]} có phần tử rỗng.`);
+
+    const [spec, stepRaw] = piece.split("/");
+    let step = 1;
+    if (stepRaw !== undefined) {
+      step = Number(stepRaw);
+      if (!Number.isInteger(step) || step < 1)
+        throw new Error(`Bước nhảy "${stepRaw}" ở trường ${CRON_FIELD_NAMES[index]} không hợp lệ.`);
+    }
+
+    let from;
+    let to;
+    if (spec === "*") {
+      from = min;
+      to = max;
+    } else if (spec.includes("-")) {
+      const [a, b] = spec.split("-");
+      from = Number(a);
+      to = Number(b);
+      if (!Number.isInteger(from) || !Number.isInteger(to))
+        throw new Error(`Khoảng "${spec}" ở trường ${CRON_FIELD_NAMES[index]} không hợp lệ.`);
+      if (from > to)
+        throw new Error(`Khoảng "${spec}" ở trường ${CRON_FIELD_NAMES[index]} có đầu lớn hơn cuối.`);
+    } else {
+      from = Number(spec);
+      to = from;
+      if (!Number.isInteger(from))
+        throw new Error(`Giá trị "${spec}" ở trường ${CRON_FIELD_NAMES[index]} không phải số nguyên.`);
+    }
+
+    if (from < min || to > max)
+      throw new Error(
+        `Giá trị "${spec}" ở trường ${CRON_FIELD_NAMES[index]} ngoài khoảng cho phép ${min}-${max}.`
+      );
+
+    for (let v = from; v <= to; v += step) out.add(v);
+  }
+
+  return out;
+}
+
+function parseCron(expr) {
+  const parts = expr.trim().split(/\s+/);
+  if (parts.length !== 5)
+    throw new Error(
+      `Lịch cron phải có đúng 5 trường (phút giờ ngày tháng thứ), nhận được ${parts.length}: "${expr.trim()}".`
+    );
+
+  return {
+    minute: parseCronField(parts[0], 0),
+    hour: parseCronField(parts[1], 1),
+    dayOfMonth: parseCronField(parts[2], 2),
+    month: parseCronField(parts[3], 3),
+    dayOfWeek: parseCronField(parts[4], 4),
+    domRestricted: parts[2].trim() !== "*",
+    dowRestricted: parts[4].trim() !== "*",
+    everyDay: parts[2].trim() === "*" && parts[4].trim() === "*",
+  };
+}
+
+function cronMatches(fields, at) {
+  if (!fields.minute.has(at.getMinutes())) return false;
+  if (!fields.hour.has(at.getHours())) return false;
+  if (!fields.month.has(at.getMonth() + 1)) return false;
+
+  const domOk = fields.dayOfMonth.has(at.getDate());
+  const dowOk = fields.dayOfWeek.has(at.getDay());
+
+  if (fields.domRestricted && fields.dowRestricted) return domOk || dowOk;
+  if (fields.domRestricted) return domOk;
+  if (fields.dowRestricted) return dowOk;
+  return true;
+}
+
+function describeCron(expr) {
+  const f = parseCron(expr);
+  const hours = [...f.hour].sort((a, b) => a - b);
+  const minutes = [...f.minute].sort((a, b) => a - b);
+
+  if (hours.length === 24 && minutes.length === 1)
+    return `mỗi giờ vào phút thứ ${minutes[0]}`;
+  if (hours.length === 1 && minutes.length === 1) {
+    const at = `${String(hours[0]).padStart(2, "0")}:${String(minutes[0]).padStart(2, "0")}`;
+    return f.everyDay ? `${at} mỗi ngày` : `${at} theo lịch "${expr.trim()}"`;
+  }
+  return `theo lịch "${expr.trim()}"`;
+}
+
 /* ---------- kiểm tra ---------- */
 
 let passed = 0;
@@ -1198,6 +1303,92 @@ check("description dài hơn 100 ký tự bị cắt", () => {
   });
   const des = new URL(url).searchParams.get("des");
   assert.equal(des.length, 100);
+});
+
+/* ---------- lịch cron cho backup ---------- */
+
+check("lịch 23:00 mỗi ngày khớp đúng phút, lệch một phút là không khớp", () => {
+  const f = parseCron("0 23 * * *");
+  assert.ok(cronMatches(f, new Date(2026, 7, 7, 23, 0)));
+  assert.ok(!cronMatches(f, new Date(2026, 7, 7, 23, 1)));
+  assert.ok(!cronMatches(f, new Date(2026, 7, 7, 22, 0)));
+});
+check("*/6 ở trường giờ chỉ khớp 0, 6, 12, 18", () => {
+  const f = parseCron("0 */6 * * *");
+  assert.deepEqual([...f.hour].sort((a, b) => a - b), [0, 6, 12, 18]);
+  assert.ok(cronMatches(f, new Date(2026, 7, 7, 12, 0)));
+  assert.ok(!cronMatches(f, new Date(2026, 7, 7, 13, 0)));
+});
+check("danh sách và khoảng cùng lúc: 0,30 ở phút và 9-11 ở giờ", () => {
+  const f = parseCron("0,30 9-11 * * *");
+  assert.deepEqual([...f.minute].sort((a, b) => a - b), [0, 30]);
+  assert.deepEqual([...f.hour].sort((a, b) => a - b), [9, 10, 11]);
+  assert.ok(cronMatches(f, new Date(2026, 7, 7, 10, 30)));
+  assert.ok(!cronMatches(f, new Date(2026, 7, 7, 10, 15)));
+});
+check("chỉ định thứ Hai thì thứ Sáu không khớp", () => {
+  const f = parseCron("30 2 * * 1");
+  // 2026-08-10 là thứ Hai, 2026-08-07 là thứ Sáu.
+  assert.ok(cronMatches(f, new Date(2026, 7, 10, 2, 30)));
+  assert.ok(!cronMatches(f, new Date(2026, 7, 7, 2, 30)));
+});
+check("chỉ định ngày 1 thì các ngày khác không khớp, bất kể là thứ mấy", () => {
+  const f = parseCron("0 0 1 * *");
+  assert.ok(cronMatches(f, new Date(2026, 8, 1, 0, 0)));
+  assert.ok(!cronMatches(f, new Date(2026, 8, 2, 0, 0)));
+});
+check("luật OR của cron: khớp ngày-trong-tháng HOẶC thứ là đủ", () => {
+  // Ngày 1 hoặc Chủ nhật — hành vi gây bất ngờ nhất của cron, phải chốt lại.
+  const f = parseCron("0 0 1 * 0");
+  assert.equal(f.everyDay, false);
+  assert.ok(cronMatches(f, new Date(2026, 8, 1, 0, 0)), "ngày 1 (thứ Ba) vẫn khớp");
+  assert.ok(cronMatches(f, new Date(2026, 7, 9, 0, 0)), "Chủ nhật 09/08 vẫn khớp");
+  assert.ok(!cronMatches(f, new Date(2026, 7, 11, 0, 0)), "thứ Ba 11/08 không khớp");
+});
+check("trường tháng được tôn trọng", () => {
+  const f = parseCron("0 0 * 3 *");
+  assert.ok(cronMatches(f, new Date(2026, 2, 15, 0, 0)));
+  assert.ok(!cronMatches(f, new Date(2026, 3, 15, 0, 0)));
+});
+check("thiếu hoặc thừa trường thì báo lỗi rõ số trường nhận được", () => {
+  assert.throws(() => parseCron("0 23 * *"), /đúng 5 trường/);
+  assert.throws(() => parseCron("0 23 * * * *"), /đúng 5 trường/);
+});
+check("giá trị ngoài khoảng bị từ chối thay vì im lặng bỏ qua", () => {
+  assert.throws(() => parseCron("60 * * * *"), /ngoài khoảng cho phép 0-59/);
+  assert.throws(() => parseCron("0 24 * * *"), /ngoài khoảng cho phép 0-23/);
+  assert.throws(() => parseCron("0 0 0 * *"), /ngoài khoảng cho phép 1-31/);
+  assert.throws(() => parseCron("0 0 * 13 *"), /ngoài khoảng cho phép 1-12/);
+  assert.throws(() => parseCron("0 0 * * 7"), /ngoài khoảng cho phép 0-6/);
+});
+check("cú pháp rác bị từ chối, không âm thầm coi như hợp lệ", () => {
+  assert.throws(() => parseCron("abc * * * *"), /không phải số nguyên/);
+  assert.throws(() => parseCron("0,,30 * * * *"), /phần tử rỗng/);
+  assert.throws(() => parseCron("0 */0 * * *"), /Bước nhảy/);
+  assert.throws(() => parseCron("0 */x * * *"), /Bước nhảy/);
+  assert.throws(() => parseCron("30-10 * * * *"), /đầu lớn hơn cuối/);
+});
+check("CRON_SECRET bị gõ nhầm vào BACKUP_CRON vẫn là lịch hợp lệ", () => {
+  // Người dùng từng nhầm hai biến này. "5 * * * *" là lịch hợp lệ (phút thứ 5
+  // mỗi giờ) nên parser không thể phát hiện — chỉ tài liệu mới chặn được.
+  const f = parseCron("5 * * * *");
+  assert.ok(cronMatches(f, new Date(2026, 7, 7, 13, 5)));
+  assert.equal(describeCron("5 * * * *"), "mỗi giờ vào phút thứ 5");
+});
+check("mô tả lịch bằng tiếng Việt cho các dạng thường dùng", () => {
+  assert.equal(describeCron("0 23 * * *"), "23:00 mỗi ngày");
+  assert.equal(describeCron("30 2 * * 1"), '02:30 theo lịch "30 2 * * 1"');
+  assert.equal(describeCron("0 */6 * * *"), 'theo lịch "0 */6 * * *"');
+});
+check("khoảng trắng thừa hai đầu không làm hỏng lịch", () => {
+  const f = parseCron("  0   23  *  *  *  ");
+  assert.ok(cronMatches(f, new Date(2026, 7, 7, 23, 0)));
+  assert.equal(f.everyDay, true);
+});
+check("* * * * * khớp mọi thời điểm — mốc so sánh cho các luật trên", () => {
+  const f = parseCron("* * * * *");
+  assert.ok(cronMatches(f, new Date(2026, 0, 1, 0, 0)));
+  assert.ok(cronMatches(f, new Date(2026, 11, 31, 23, 59)));
 });
 
 console.log(`\n${passed} kiểm tra đã chạy xong.\n`);

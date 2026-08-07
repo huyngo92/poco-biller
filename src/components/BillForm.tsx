@@ -89,6 +89,10 @@ export default function BillForm({
   const exactMismatch =
     draft.splitMode === "exact" && total > 0 && previewSum !== total;
 
+  // Chỉ hiện phần "Chia thế nào" khi thông tin bill cơ bản đã hợp lệ
+  const infoValid = draft.title.trim().length > 0 && total > 0;
+  const canSave = infoValid && participants.length > 0 && !exactMismatch;
+
   // Chuyển sang nhập tay thì mồi sẵn số tiền đang chia đều cho dễ sửa
   useEffect(() => {
     if (draft.splitMode !== "exact" || total <= 0) return;
@@ -259,6 +263,7 @@ export default function BillForm({
         </div>
       </div>
 
+      {infoValid && (
       <div className="card card-pad stack">
         <div>
           <p className="section-title" style={{ marginBottom: 8 }}>
@@ -372,6 +377,7 @@ export default function BillForm({
           </span>
         </div>
       </div>
+      )}
 
       {error && (
         <p className="error" role="alert">
@@ -380,22 +386,24 @@ export default function BillForm({
         </p>
       )}
 
-      <button
-        type="button"
-        className="btn btn-primary btn-block"
-        onClick={save}
-        disabled={busy}
-      >
-        {busy ? (
-          <>
-            <IconSpinner size={ICON_SIZE.md} /> Đang lưu
-          </>
-        ) : (
-          <>
-            <IconCheck size={ICON_SIZE.md} /> Lưu bill
-          </>
-        )}
-      </button>
+      {infoValid && (
+        <button
+          type="button"
+          className="btn btn-primary btn-block"
+          onClick={save}
+          disabled={busy || !canSave}
+        >
+          {busy ? (
+            <>
+              <IconSpinner size={ICON_SIZE.md} /> Đang lưu
+            </>
+          ) : (
+            <>
+              <IconCheck size={ICON_SIZE.md} /> Lưu bill
+            </>
+          )}
+        </button>
+      )}
     </div>
   );
 }

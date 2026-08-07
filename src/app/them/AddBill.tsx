@@ -182,6 +182,22 @@ export default function AddBill({
     }
   }
 
+  function resetToStart(msg: string) {
+    setSaved(msg);
+    setError("");
+    setMode("photo");
+    setDraft(emptyDraft(members, user.id));
+    setBubbles([]);
+    setOcrItems([]);
+    setChatInput("");
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+      setPreviewUrl("");
+    }
+    if (fileRef.current) fileRef.current.value = "";
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   if (!group || !draft) {
     return (
       <div className="shell">
@@ -193,6 +209,11 @@ export default function AddBill({
       </div>
     );
   }
+
+  // Manual thì form nhập chính là "thông tin bill" nên luôn hiện.
+  // Photo/chat thì phải có nội dung do OCR/AI đọc ra rồi mới hiện phần review.
+  const hasContent =
+    mode === "manual" || draft.title.trim().length > 0 || draft.totalText.trim().length > 0;
 
   return (
     <div className="shell">
@@ -360,31 +381,25 @@ export default function AddBill({
         </p>
       )}
 
-      <div className="section-head">
-        <h2 className="section-title">
-          {mode === "manual" ? "Thông tin bill" : "Kiểm tra rồi lưu"}
-        </h2>
-      </div>
+      {hasContent && (
+        <>
+          <div className="section-head">
+            <h2 className="section-title">
+              {mode === "manual" ? "Thông tin bill" : "Kiểm tra rồi lưu"}
+            </h2>
+          </div>
 
-      <BillForm
-        groupId={group.id}
-        members={members}
-        currentUserId={user.id}
-        draft={draft}
-        setDraft={setDraft}
-        source={mode === "photo" ? "ocr" : mode === "chat" ? "chat" : "manual"}
-        onSaved={(msg) => {
-          setSaved(msg);
-          setError("");
-          setBubbles([]);
-          setOcrItems([]);
-          if (previewUrl) {
-            URL.revokeObjectURL(previewUrl);
-            setPreviewUrl("");
-          }
-          window.scrollTo({ top: 0, behavior: "smooth" });
-        }}
-      />
+          <BillForm
+            groupId={group.id}
+            members={members}
+            currentUserId={user.id}
+            draft={draft}
+            setDraft={setDraft}
+            source={mode === "photo" ? "ocr" : mode === "chat" ? "chat" : "manual"}
+            onSaved={resetToStart}
+          />
+        </>
+      )}
     </div>
   );
 }

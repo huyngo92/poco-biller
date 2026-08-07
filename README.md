@@ -16,7 +16,7 @@ Nhóm bạn/team nào cũng có vài lượt ứng tiền linh tinh mỗi tuần
 
 **Nhập liệu bằng AI** — chụp hoá đơn hoặc gõ một câu, AI đọc ra số tiền, người tham gia, tỷ lệ chia. Số tiền cuối cùng luôn được tính lại ở server để khớp đúng tổng bill, kể cả khi AI đoán lệch.
 
-**Sao lưu không phụ thuộc ai** — xuất JSON/CSV bất cứ lúc nào, và tự động đẩy CSV lên Google Drive mỗi ngày nếu bạn muốn.
+**Sao lưu không phụ thuộc ai** — tải CSV bất cứ lúc nào, và tự động đẩy nguyên file DB lên một nhánh riêng trên GitHub theo lịch bạn khai trong `.env` (`BACKUP_CRON=0 23 * * *`), không cần crontab của máy. Deploy lại mà mất ổ đĩa, app tự tải bản backup gần nhất về khôi phục.
 
 ## Công nghệ
 
@@ -30,7 +30,7 @@ cp .env.example .env
 npm run dev
 ```
 
-Hướng dẫn cấu hình đầy đủ (AI, Google Drive, triển khai production, xử lý lỗi mạng...) nằm ở [SETUP.md](./SETUP.md).
+Hướng dẫn cấu hình đầy đủ (AI, backup GitHub, triển khai production, xử lý lỗi mạng...) nằm ở [SETUP.md](./SETUP.md).
 
 ## Kiểm tra logic tiền tệ
 
@@ -38,7 +38,7 @@ Hướng dẫn cấu hình đầy đủ (AI, Google Drive, triển khai producti
 npm test
 ```
 
-110 assertion cho các phần dễ sai nhất: chia tiền luôn khớp tổng, số dư cả nhóm luôn về 0, số giao dịch gợi ý tối giản, và không bao giờ để lộ secret ra thông báo lỗi.
+124 assertion cho các phần dễ sai nhất: chia tiền luôn khớp tổng, số dư cả nhóm luôn về 0, số giao dịch gợi ý tối giản, lịch backup khớp đúng thời điểm, và không bao giờ để lộ secret ra thông báo lỗi.
 
 ---
 

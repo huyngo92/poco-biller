@@ -1,13 +1,19 @@
-import { getDb } from "@/lib/db";
-import { exportGroupCsv, logBackup } from "@/lib/backup";
-import { driveConfigured, uploadToDrive } from "@/lib/drive";
+import { githubBackupConfigured } from "@/lib/github-backup";
+import { runDbBackup } from "@/lib/scheduler";
 import { ok } from "@/lib/api";
 import { NextResponse } from "next/server";
 
 /**
- * Backup CSV toàn bộ nhóm lên Google Drive.
- * Gọi hàng ngày bằng cron ngoài hệ thống:
- *   curl -H "x-cron-secret: $CRON_SECRET" https://host/api/cron/backup
+ * Sao lưu toàn bộ file DB lên GitHub. Chỉ DB — không backup CSV, vì CSV chỉ để
+ * người dùng tải về xem, còn khôi phục sau khi build lại thì cần đúng file .db.
+ *
+ * Bình thường app tự hẹn giờ theo BACKUP_CRON trong .env, không cần gọi vào đây.
+ * Endpoint này để gọi tay khi muốn backup ngay, hoặc cho môi trường serverless
+ * (Vercel Cron) nơi tiến trình không sống lâu để tự hẹn giờ:
+ *   curl -fsS -H "x-cron-secret: $CRON_SECRET" http://localhost:3000/api/cron/backup
+ *
+ * CRON_SECRET là mật khẩu bảo vệ endpoint (không phải lịch chạy) — để trống thì
+ * endpoint tự tắt.
  */
 export async function GET(req: Request) {
   const secret = process.env.CRON_SECRET;
@@ -24,34 +30,21 @@ export async function GET(req: Request) {
   if (provided !== secret)
     return NextResponse.json({ error: "Sai mã bảo vệ." }, { status: 401 });
 
-  if (!driveConfigured())
+  if (!githubBackupConfigured())
     return NextResponse.json(
-      { error: "Chưa cấu hình Google Drive." },
+      { error: "Chưa cấu hình GitHub backup." },
       { status: 503 }
     );
 
-  const groups = getDb()
-    .prepare("SELECT id, name FROM groups ORDER BY id")
-    .all() as { id: number; name: string }[];
-
-  const stamp = new Date().toISOString().slice(0, 10);
-  const results: { groupId: number; status: string; detail: string }[] = [];
-
-  for (const g of groups) {
-    try {
-      const file = await uploadToDrive({
-        name: `poco-bills-${g.id}-${stamp}.csv`,
-        mimeType: "text/csv",
-        content: exportGroupCsv(g.id),
-      });
-      logBackup("csv-cron", "google-drive", "ok", `${file.name} (${g.name})`);
-      results.push({ groupId: g.id, status: "ok", detail: file.name });
-    } catch (e) {
-      const message = e instanceof Error ? e.message : "Lỗi không xác định";
-      logBackup("csv-cron", "google-drive", "loi", `${g.name}: ${message}`);
-      results.push({ groupId: g.id, status: "loi", detail: message });
-    }
+  try {
+    const res = await runDbBackup("db-cron");
+    return ok({ ranAt: new Date().toISOString(), ...res });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Lỗi không xác định";
+    console.error("[poco-biller] cron backup:", message);
+    return NextResponse.json(
+      { error: message, ranAt: new Date().toISOString() },
+      { status: 502 }
+    );
   }
-
-  return ok({ ranAt: new Date().toISOString(), results });
 }

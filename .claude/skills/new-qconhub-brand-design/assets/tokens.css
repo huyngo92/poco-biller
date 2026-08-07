@@ -1,0 +1,215 @@
+/* ============================================================
+   QC OneHub Brand Design System — Design Tokens
+   Typography, color, shape, elevation. Import this first, then
+   components.css. Values are copy-paste-ready CSS custom properties.
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&subset=vietnamese&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+:root {
+  /* ── Surfaces ── */
+  --bg: #F2F2F2;
+  --bg-2: #E8E8E8;
+  --surface: #FFFFFF;
+  --surface-2: #FAFAFA;
+
+  /* ── Text ── */
+  --ink: #231F20;
+  --ink-2: #3A3638;
+  --muted: #5E5C62;
+  --dim: #6E6C73; /* darkened from #8A8890 — was 3.49:1 on white, now ~5.1:1 (WCAG AA) */
+  --faint: #B0AEB4;
+
+  /* ── Borders ── */
+  --border: #E4E4E4;
+  --border-strong: #CFCFCF;
+  --rule: #EDEDED;
+
+  /* ── Brand (primary blue) ── */
+  --brand: #0066B3;
+  --brand-dark: #004F8C;
+  --brand-darker: #003366;
+  --brand-soft: #E6F0F8;
+  --brand-tint: rgba(0, 102, 179, 0.10);
+
+  /* ── Accents ── */
+  --accent-orange: #F47920;
+  --accent-yellow: #FDB913;
+  --accent-red: #ED1C24;        /* alerts/promo only */
+
+  /* ── Semantic ── */
+  --ok: #2E8B3D;
+  --ok-soft: #E8F5EA;
+  --warn: #F47920;
+  --warn-soft: #FDEFE2;
+  --err: #ED1C24;
+  --err-soft: #FCE8E9;
+  --info: #0066B3;
+  --info-soft: #E6F0F8;
+  --purple: #5E2B97;
+  --purple-soft: #EFE7F7;
+
+  /* ── Typography ── */
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+
+  /* ── Shape ── */
+  --radius: 6px;
+  --radius-sm: 4px;
+
+  /* ── Elevation ── */
+  --shadow-sm: 0 1px 2px rgba(10, 10, 11, 0.04);
+  --shadow: 0 1px 3px rgba(10, 10, 11, 0.06), 0 1px 2px rgba(10, 10, 11, 0.04);
+  --shadow-lg: 0 12px 32px -8px rgba(10, 10, 11, 0.16);
+
+  /* ── Inverse (fixed, NOT theme-reactive — used by toast/log-console/
+     selection-bar, surfaces that must stay dark-on-white in both themes) ── */
+  --inverse-bg: #1C1B1D;
+  --inverse-ink: #FFFFFF;
+}
+
+/* ── Base reset ── */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: var(--font-sans);
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.55;
+  font-weight: 400;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'cv11', 'ss01', 'ss03';
+}
+::selection { background: var(--brand); color: #fff; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 6px; border: 2px solid var(--bg); }
+::-webkit-scrollbar-thumb:hover { background: var(--faint); }
+
+/* ── Dark mode ── */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #111113;
+    --bg-2: #18181B;
+    --surface: #1C1C1F;
+    --surface-2: #222226;
+
+    --ink: #F0EFF2;
+    --ink-2: #CCCAD0;
+    --muted: #9A98A0;
+    --dim: #8C8A92; /* lightened from #6E6C74 — was 3.28:1 on dark bg, now ~5.6:1 (WCAG AA) */
+    --faint: #4A4850;
+
+    --border: #2A2A2E;
+    --border-strong: #3A3A40;
+    --rule: #242428;
+
+    --brand: #3B8FD4;
+    --brand-dark: #2E74B0;
+    --brand-darker: #1A4F80;
+    --brand-soft: #0D1F30;
+    --brand-tint: rgba(59, 143, 212, 0.15);
+
+    --ok: #4CAF63;      --ok-soft: #0D2415;
+    --warn: #F5903A;    --warn-soft: #271400;
+    --err: #F25A5A;     --err-soft: #270A0A;
+    --info: #3B8FD4;    --info-soft: #0D1F30;
+    --purple: #9B6DD6;  --purple-soft: #1E0F38;
+
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.25);
+    --shadow: 0 1px 3px rgba(0,0,0,0.35), 0 1px 2px rgba(0,0,0,0.25);
+    --shadow-lg: 0 12px 32px -8px rgba(0,0,0,0.55);
+  }
+}
+/* Class-based dark toggle: add class="dark" on <html>.
+   Also define .light so it can force-override the OS-level
+   prefers-color-scheme:dark media query (same specificity as :root,
+   later in source order wins) — otherwise users whose OS is set to
+   dark can never toggle back to light. */
+.dark {
+  --bg: #111113;
+  --bg-2: #18181B;
+  --surface: #1C1C1F;
+  --surface-2: #222226;
+
+  --ink: #F0EFF2;
+  --ink-2: #CCCAD0;
+  --muted: #9A98A0;
+  --dim: #8C8A92;
+  --faint: #4A4850;
+
+  --border: #2A2A2E;
+  --border-strong: #3A3A40;
+  --rule: #242428;
+
+  --brand: #3B8FD4;
+  --brand-dark: #2E74B0;
+  --brand-darker: #1A4F80;
+  --brand-soft: #0D1F30;
+  --brand-tint: rgba(59, 143, 212, 0.15);
+
+  --ok: #4CAF63;      --ok-soft: #0D2415;
+  --warn: #F5903A;    --warn-soft: #271400;
+  --err: #F25A5A;     --err-soft: #270A0A;
+  --info: #3B8FD4;    --info-soft: #0D1F30;
+  --purple: #9B6DD6;  --purple-soft: #1E0F38;
+
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.25);
+  --shadow: 0 1px 3px rgba(0,0,0,0.35), 0 1px 2px rgba(0,0,0,0.25);
+  --shadow-lg: 0 12px 32px -8px rgba(0,0,0,0.55);
+}
+.light {
+  --bg: #F2F2F2;
+  --bg-2: #E8E8E8;
+  --surface: #FFFFFF;
+  --surface-2: #FAFAFA;
+
+  --ink: #231F20;
+  --ink-2: #3A3638;
+  --muted: #5E5C62;
+  --dim: #6E6C73;
+  --faint: #B0AEB4;
+
+  --border: #E4E4E4;
+  --border-strong: #CFCFCF;
+  --rule: #EDEDED;
+
+  --brand: #0066B3;
+  --brand-dark: #004F8C;
+  --brand-darker: #003366;
+  --brand-soft: #E6F0F8;
+  --brand-tint: rgba(0, 102, 179, 0.10);
+
+  --ok: #2E8B3D;      --ok-soft: #E8F5EA;
+  --warn: #F47920;    --warn-soft: #FDEFE2;
+  --err: #ED1C24;     --err-soft: #FCE8E9;
+  --info: #0066B3;    --info-soft: #E6F0F8;
+  --purple: #5E2B97;  --purple-soft: #EFE7F7;
+
+  --shadow-sm: 0 1px 2px rgba(10, 10, 11, 0.04);
+  --shadow: 0 1px 3px rgba(10, 10, 11, 0.06), 0 1px 2px rgba(10, 10, 11, 0.04);
+  --shadow-lg: 0 12px 32px -8px rgba(10, 10, 11, 0.16);
+}
+
+/* ── Corporate top accent bar ── */
+.brand-top-accent {
+  height: 3px;
+  background: linear-gradient(90deg, var(--brand) 0%, var(--brand-darker) 60%, var(--brand) 100%);
+}
+
+/* ── Page reveal (opacity only — safe with position:fixed descendants) ── */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

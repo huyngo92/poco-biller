@@ -12,6 +12,7 @@ import {
   type SessionUser,
 } from "@/lib/types";
 import GroupPicker from "@/components/GroupPicker";
+import PullToRefresh from "@/components/PullToRefresh";
 import BillSheet from "@/components/BillSheet";
 import {
   CategoryDonut,
@@ -109,6 +110,7 @@ export default function Dashboard({
   }
 
   return (
+    <PullToRefresh onRefresh={load}>
     <div className="shell">
       <header className="topbar">
         <span className="brand-mark" aria-hidden="true" />
@@ -446,5 +448,6 @@ export default function Dashboard({
         />
       )}
     </div>
+    </PullToRefresh>
   );
 }

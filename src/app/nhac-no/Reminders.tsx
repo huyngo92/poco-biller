@@ -8,6 +8,7 @@ import { formatVnd } from "@/lib/money";
 import { today } from "@/lib/period";
 import { sepayQrUrl } from "@/lib/qr";
 import GroupPicker from "@/components/GroupPicker";
+import PullToRefresh from "@/components/PullToRefresh";
 import CopyButton from "@/components/CopyButton";
 import CopyImageButton from "@/components/CopyImageButton";
 import {
@@ -262,6 +263,7 @@ export default function Reminders({
   const totalOwedToMe = debtsToMe.reduce((sum, r) => sum + r.amount, 0);
 
   return (
+    <PullToRefresh onRefresh={() => group ? loadReminders(group.id) : Promise.resolve()}>
     <div className="shell">
       <header className="topbar">
         <IconBell size={22} style={{ color: "var(--tint-strong)" }} />
@@ -371,5 +373,6 @@ export default function Reminders({
         </div>
       )}
     </div>
+    </PullToRefresh>
   );
 }
