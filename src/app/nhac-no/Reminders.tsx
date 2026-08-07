@@ -193,15 +193,6 @@ export default function Reminders({
   const [confirmingKey, setConfirmingKey] = useState<string | null>(null);
   const [settlingKey, setSettlingKey] = useState<string | null>(null);
 
-  useEffect(() => setGroup(resolveGroup(groups)), [groups]);
-
-  // Load reminders khi group được xác định
-  useEffect(() => {
-    if (group?.id) {
-      void loadReminders(group.id);
-    }
-  }, [group?.id, loadReminders]);
-
   const loadReminders = useCallback(async (groupId: number) => {
     setLoading(true);
     setError("");
@@ -218,6 +209,15 @@ export default function Reminders({
       setLoading(false);
     }
   }, []);
+
+  useEffect(() => setGroup(resolveGroup(groups)), [groups]);
+
+  // Load reminders khi group được xác định
+  useEffect(() => {
+    if (group?.id) {
+      void loadReminders(group.id);
+    }
+  }, [group?.id, loadReminders]);
 
   const handleGroupChange = (newGroup: Group) => {
     rememberGroupId(newGroup.id);
