@@ -1,5 +1,5 @@
 import { getDb } from "./db";
-import { computeBalances, suggestTransfers } from "./balance";
+import { computeBalances, suggestDirectTransfers } from "./balance";
 import { getBankAccountsFor } from "./queries";
 import { findBank } from "./banks";
 import { resolvePeriod } from "./period";
@@ -55,10 +55,20 @@ export function getReminders(groupId: number): Reminder[] {
       ? []
       : (db
           .prepare(
-            `SELECT bill_id AS billId, user_id AS userId, amount
-               FROM bill_shares WHERE bill_id IN (${bills.map(() => "?").join(",")})`
+            `SELECT bs.bill_id AS billId, bs.user_id AS userId, bs.amount, u.name
+               FROM bill_shares bs JOIN users u ON u.id = bs.user_id
+              WHERE bs.bill_id IN (${bills.map(() => "?").join(",")})`
           )
-          .all(...bills.map((b) => b.id)) as { billId: number; userId: number; amount: number }[]);
+          .all(...bills.map((b) => b.id)) as { billId: number; userId: number; amount: number; name: string }[]);
+
+  // Thêm những người có trong bill_shares nhưng chưa join nhóm (e.g. khách mời)
+  const memberIds = new Set(members.map((m) => m.userId));
+  for (const s of shareRows) {
+    if (!memberIds.has(s.userId)) {
+      members.push({ userId: s.userId, name: s.name, email: "", role: "member" });
+      memberIds.add(s.userId);
+    }
+  }
 
   const sharesByBill = new Map<number, { userId: number; amount: number }[]>();
   for (const s of shareRows) {
@@ -78,10 +88,7 @@ export function getReminders(groupId: number): Reminder[] {
     amount: number;
   }[];
 
-  // computeBalances chỉ đọc paidBy/total/shares, nhưng khai kiểu Bill đầy đủ —
-  // ta không cần các cột còn lại (title, category...) cho việc tính số dư nên
-  // ép kiểu qua unknown thay vì lấy dữ liệu không dùng tới.
-  const balances = computeBalances(
+  const transfers = suggestDirectTransfers(
     members,
     bills.map((b) => ({
       paidBy: b.paidBy,
@@ -90,8 +97,6 @@ export function getReminders(groupId: number): Reminder[] {
     })) as unknown as Bill[],
     settlements as unknown as Settlement[]
   );
-
-  const transfers = suggestTransfers(balances);
   if (transfers.length === 0) return [];
 
   const bankAccounts = getBankAccountsFor(transfers.map((t) => t.toUserId));

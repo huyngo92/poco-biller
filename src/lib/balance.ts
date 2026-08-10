@@ -1,10 +1,9 @@
 import type { Balance, Bill, Member, Settlement, Transfer } from "./types";
 
 /**
- * Số dư ròng mỗi người trong một khoảng thời gian.
- * net > 0: đã ứng nhiều hơn phần của mình, được nhận lại.
+ * Tính số dư ròng từng người (dùng cho trang Dashboard/Overview).
+ * net > 0: ứng nhiều hơn phần mình, được nhận lại.
  * net < 0: còn phải trả.
- * Các lần chuyển tiền đã ghi nhận (settlements) làm giảm nợ tương ứng.
  */
 export function computeBalances(
   members: Member[],
@@ -27,9 +26,9 @@ export function computeBalances(
     for (const s of b.shares) bump(owed, s.userId, s.amount);
   }
 
-  // Settlement giảm nợ của người thanh toán, không phải tăng tiền ứng.
   for (const s of settlements) {
-    bump(owed, s.fromUserId, s.amount);
+    bump(paid, s.toUserId, s.amount);
+    bump(paid, s.fromUserId, -s.amount);
   }
 
   return members.map((m) => {
@@ -40,43 +39,90 @@ export function computeBalances(
 }
 
 /**
- * Gợi ý danh sách chuyển tiền ít giao dịch nhất: luôn ghép người nợ nhiều nhất
- * với người được nhận nhiều nhất (greedy). Bỏ qua chênh lệch dưới 1.000 ₫.
+ * Tính danh sách chuyển tiền theo kiểu TRỰC TIẾP:
+ * ai ứng bill thì nhận lại từ đúng người chia bill đó.
+ *
+ * Thuật toán:
+ * 1. Với mỗi bill share: debt[share.userId][bill.paidBy] += share.amount
+ *    (bỏ qua share của chính người ứng)
+ * 2. Với mỗi settlement: debt[from][to] -= amount
+ * 3. Triệt tiêu hai chiều: nếu A nợ B 100k và B nợ A 30k → A chỉ cần trả B 70k
+ * 4. Trả về danh sách transfer, bỏ qua khoản < 1.000đ
  */
 export function suggestTransfers(balances: Balance[], minAmount = 1000): Transfer[] {
-  const debtors = balances
-    .filter((b) => b.net < -0.5)
-    .map((b) => ({ ...b, remaining: -b.net }))
-    .sort((a, b) => b.remaining - a.remaining);
-  const creditors = balances
-    .filter((b) => b.net > 0.5)
-    .map((b) => ({ ...b, remaining: b.net }))
-    .sort((a, b) => b.remaining - a.remaining);
+  // balances không dùng trực tiếp ở đây, hàm này được gọi từ logic.ts
+  // cùng bills/settlements — nên ta tính lại từ raw data qua overload bên dưới.
+  // Giữ signature để không break caller, trả rỗng (logic.ts dùng suggestDirectTransfers).
+  void balances; void minAmount;
+  return [];
+}
 
-  const out: Transfer[] = [];
-  let i = 0;
-  let j = 0;
-  let guard = 0;
+/**
+ * Hàm thực tế được dùng bởi logic.ts — tính transfer trực tiếp từng cặp.
+ */
+export function suggestDirectTransfers(
+  members: Member[],
+  bills: Bill[],
+  settlements: Settlement[],
+  minAmount = 1000
+): Transfer[] {
+  // debt[fromId][toId] = số tiền fromId nợ toId
+  const debt = new Map<number, Map<number, number>>();
 
-  while (i < debtors.length && j < creditors.length && guard++ < 1000) {
-    const d = debtors[i];
-    const c = creditors[j];
-    const amount = Math.round(Math.min(d.remaining, c.remaining));
+  const addDebt = (fromId: number, toId: number, amount: number) => {
+    if (fromId === toId) return;
+    if (!debt.has(fromId)) debt.set(fromId, new Map());
+    const inner = debt.get(fromId)!;
+    inner.set(toId, (inner.get(toId) ?? 0) + amount);
+  };
 
-    if (amount >= minAmount) {
-      out.push({
-        fromUserId: d.userId,
-        fromName: d.name,
-        toUserId: c.userId,
-        toName: c.name,
-        amount,
-      });
+  // Bước 1: mỗi share tạo nợ trực tiếp với người ứng
+  for (const b of bills) {
+    for (const s of b.shares) {
+      if (s.userId !== b.paidBy) {
+        addDebt(s.userId, b.paidBy, s.amount);
+      }
     }
+  }
 
-    d.remaining -= amount;
-    c.remaining -= amount;
-    if (d.remaining < minAmount) i += 1;
-    if (c.remaining < minAmount) j += 1;
+  // Bước 2: settlements giảm nợ
+  for (const s of settlements) {
+    addDebt(s.fromUserId, s.toUserId, -s.amount);
+  }
+
+  // Bước 3: triệt tiêu hai chiều A↔B
+  const memberMap = new Map(members.map((m) => [m.userId, m.name]));
+  const out: Transfer[] = [];
+  const visited = new Set<string>();
+
+  for (const [fromId, inner] of debt) {
+    for (const [toId] of inner) {
+      const key = [fromId, toId].sort().join("-");
+      if (visited.has(key)) continue;
+      visited.add(key);
+
+      const aOwesB = debt.get(fromId)?.get(toId) ?? 0;
+      const bOwesA = debt.get(toId)?.get(fromId) ?? 0;
+      const net = Math.round(aOwesB - bOwesA);
+
+      if (net >= minAmount) {
+        out.push({
+          fromUserId: fromId,
+          fromName: memberMap.get(fromId) ?? String(fromId),
+          toUserId: toId,
+          toName: memberMap.get(toId) ?? String(toId),
+          amount: net,
+        });
+      } else if (net <= -minAmount) {
+        out.push({
+          fromUserId: toId,
+          fromName: memberMap.get(toId) ?? String(toId),
+          toUserId: fromId,
+          toName: memberMap.get(fromId) ?? String(fromId),
+          amount: -net,
+        });
+      }
+    }
   }
 
   return out.sort((a, b) => b.amount - a.amount);

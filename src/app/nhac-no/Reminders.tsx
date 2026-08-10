@@ -5,6 +5,7 @@ import type { Group, SessionUser } from "@/lib/types";
 import type { Reminder } from "@/lib/logic";
 import { apiJson, rememberGroupId, resolveGroup } from "@/lib/client";
 import { formatVnd } from "@/lib/money";
+import { REMINDER_QUOTES, GROUP_SUMMARY_QUOTES, pickQuote } from "@/lib/quotes";
 import { today } from "@/lib/period";
 import { sepayQrUrl } from "@/lib/qr";
 import GroupPicker from "@/components/GroupPicker";
@@ -27,39 +28,40 @@ function reminderKey(r: Reminder): string {
   return `${r.debtor.id}-${r.creditor.user.id}-${r.amount}`;
 }
 
-/** Sao kê tổng hợp toàn nhóm — không kèm QR/số tài khoản, chỉ để dán lên
- *  group chat cho mọi người cùng xem ai nợ ai. */
+/** Sao kê tổng hợp toàn nhóm */
 function generateGroupSummaryMessage(groupName: string, reminders: Reminder[]): string {
+  const quote = pickQuote(GROUP_SUMMARY_QUOTES);
+
   if (reminders.length === 0) {
-    return `📊 Sao kê nợ nhóm ${groupName}\n\nCả nhóm đã sòng phẳng, không ai còn nợ ai.`;
+    return `${quote}\n\nNhóm ${groupName} — sao kê tháng này sạch bong, không ai nợ ai cả 🎉`;
   }
 
   const lines = reminders
-    .map((r) => `- ${r.debtor.name} nợ ${r.creditor.user.name}: ${formatVnd(r.amount)}`)
+    .map((r) => `• ${r.debtor.name} nợ ${r.creditor.user.name}: ${formatVnd(r.amount)}`)
     .join("\n");
 
   const total = reminders.reduce((sum, r) => sum + r.amount, 0);
 
-  return `📊 Sao kê nợ nhóm ${groupName}\n\n${lines}\n\nTổng cộng: ${formatVnd(total)}`;
+  return `${quote}\n\nNhóm ${groupName} — sao kê nợ:\n${lines}\n\nTổng cộng: ${formatVnd(total)}`;
 }
 
 function generateReminderMessage(reminder: Reminder): string {
   const { debtor, creditor, amount } = reminder;
-  const formattedAmount = formatVnd(amount);
+  const quote = pickQuote(REMINDER_QUOTES);
 
-  let message = `${debtor.name} ơi, bạn chuyển khoản cho ${creditor.user.name} ${formattedAmount} tiền bill nhóm nhé.`;
+  let message = `${quote}\n\n${debtor.name} ơi, còn nợ ${creditor.user.name} ${formatVnd(amount)} tiền bill nhóm chưa trả nha.`;
 
   if (creditor.bankAccount) {
     const { bank, accountName, accountNumber } = creditor.bankAccount;
-    message += `\n\nThông tin chuyển khoản:`;
+    message += `\n\n💳 Chuyển khoản:`;
     if (bank) {
-      message += `\n- Ngân hàng: ${bank.shortName}`;
+      message += `\n• Ngân hàng: ${bank.shortName}`;
     }
-    message += `\n- Số tài khoản: ${accountNumber}`;
-    message += `\n- Chủ tài khoản: ${accountName}`;
+    message += `\n• Số tài khoản: ${accountNumber}`;
+    message += `\n• Chủ tài khoản: ${accountName}`;
   }
 
-  message += `\n\nCảm ơn bạn!`;
+  message += `\n\nChuyển nhanh lên bạn ơi! 🙏`;
   return message;
 }
 
