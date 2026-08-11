@@ -29,6 +29,7 @@ export type Member = {
   name: string;
   email: string;
   role: "admin" | "member";
+  avatar: string;
 };
 
 export type Group = {
@@ -73,6 +74,7 @@ export type Settlement = {
 export type Balance = {
   userId: number;
   name: string;
+  avatar: string;
   paid: number;
   owed: number;
   /** Dương = được nhận lại, âm = còn phải trả */
@@ -91,7 +93,7 @@ export type PeriodKind = "week" | "month" | "quarter" | "all";
 
 /** Người đang đăng nhập. Khai báo ở đây để client component dùng được
  *  mà không phải import từ lib/auth (file có next/headers và better-sqlite3). */
-export type SessionUser = { id: number; email: string; name: string };
+export type SessionUser = { id: number; email: string; name: string; avatar: string };
 
 /** Kết quả AI đọc từ ảnh hoá đơn. */
 export type OcrResult = {

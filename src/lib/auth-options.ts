@@ -86,16 +86,22 @@ export const authOptions: NextAuthOptions = {
       return true;
     },
     async jwt({ token }) {
-      // Thêm ID người dùng từ CSDL vào JWT token
+      // Thêm ID và avatar người dùng từ CSDL vào JWT token
       const dbUser = getDb()
-        .prepare("SELECT id FROM users WHERE email = ?")
-        .get(token.email) as { id: number } | undefined;
-      if (dbUser) token.sub = String(dbUser.id);
+        .prepare("SELECT id, avatar FROM users WHERE email = ?")
+        .get(token.email) as { id: number; avatar: string } | undefined;
+      if (dbUser) {
+        token.sub = String(dbUser.id);
+        token.avatar = dbUser.avatar || "";
+      }
       return token;
     },
     async session({ session, token }) {
-      // Thêm ID người dùng vào đối tượng session để dùng ở mọi nơi
-      if (session.user && token.sub) (session.user as any).id = parseInt(token.sub, 10);
+      // Thêm ID và avatar người dùng vào đối tượng session để dùng ở mọi nơi
+      if (session.user && token.sub) {
+        (session.user as any).id = parseInt(token.sub, 10);
+        (session.user as any).avatar = token.avatar || "";
+      }
       return session;
     },
   },

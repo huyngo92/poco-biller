@@ -14,6 +14,7 @@ import {
 import GroupPicker from "@/components/GroupPicker";
 import PullToRefresh from "@/components/PullToRefresh";
 import BillSheet from "@/components/BillSheet";
+import Avatar from "@/components/Avatar";
 import {
   CategoryDonut,
   PaidRanking,
@@ -294,6 +295,7 @@ export default function Dashboard({
                 return (
                   <div className="bal-row" key={b.userId}>
                     <div className="bal-head">
+                      <Avatar avatarId={b.avatar} name={b.name} size={28} />
                       <span className="bal-name">
                         {b.name}
                         {b.userId === user.id && (

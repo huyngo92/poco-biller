@@ -34,7 +34,7 @@ export function computeBalances(
   return members.map((m) => {
     const p = paid.get(m.userId) ?? 0;
     const o = owed.get(m.userId) ?? 0;
-    return { userId: m.userId, name: m.name, paid: p, owed: o, net: p - o };
+    return { userId: m.userId, name: m.name, avatar: m.avatar || "", paid: p, owed: o, net: p - o };
   });
 }
 

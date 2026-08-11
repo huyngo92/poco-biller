@@ -90,6 +90,17 @@ CREATE TABLE IF NOT EXISTS bank_accounts (
 );
 `;
 
+/* Migration: thêm cột avatar vào bảng users (chạy sau khi SCHEMA đã exec).
+   SQLite cho phép ALTER TABLE ADD COLUMN an toàn — nếu cột đã tồn tại thì
+   bắt lỗi và bỏ qua. */
+function migrate(db: Database.Database) {
+  try {
+    db.exec(`ALTER TABLE users ADD COLUMN avatar TEXT NOT NULL DEFAULT ''`);
+  } catch {
+    // cột đã tồn tại — bỏ qua
+  }
+}
+
 export function dbFilePath(): string {
   return path.resolve(process.env.DATABASE_PATH || "./data/poco.db");
 }
@@ -102,6 +113,7 @@ export function getDb(): Database.Database {
 
   const db = new Database(dbPath);
   db.exec(SCHEMA);
+  migrate(db);
   instance = db;
 
   // Bật scheduler backup ở đây thay vì trong instrumentation.ts.

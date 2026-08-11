@@ -8,6 +8,8 @@ import type { Group, Member, SessionUser } from "@/lib/types";
 import GroupPicker from "@/components/GroupPicker";
 import PullToRefresh from "@/components/PullToRefresh";
 import CopyButton from "@/components/CopyButton";
+import Avatar from "@/components/Avatar";
+import AvatarPicker from "@/components/AvatarPicker";
 import {
   IconAlert,
   IconFileCsv,
@@ -74,6 +76,14 @@ export default function Settings({
   const [inviteCode, setInviteCode] = useState("");
   const [memberName, setMemberName] = useState("");
   const [memberEmail, setMemberEmail] = useState("");
+
+  // Profile editing state
+  const [editName, setEditName] = useState(user.name);
+  const [selectedAvatar, setSelectedAvatar] = useState(user.avatar || "");
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+  const [currentPw, setCurrentPw] = useState("");
+  const [newPw, setNewPw] = useState("");
+  const [confirmPw, setConfirmPw] = useState("");
 
   useEffect(() => setGroup(resolveGroup(groups)), [groups]);
 
@@ -154,6 +164,44 @@ export default function Settings({
     }
   }
 
+  async function saveProfile(field: "name" | "avatar", value: string) {
+    await act(`save-${field}`, async () => {
+      await apiJson("/api/user/profile", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ [field]: value }),
+      });
+      setNotice(field === "name" ? "Đã đổi tên hiển thị." : "Đã đổi avatar.");
+      // Refresh page to update session
+      router.refresh();
+    });
+  }
+
+  async function changePassword() {
+    if (newPw !== confirmPw) {
+      setError("Mật khẩu mới và xác nhận không khớp.");
+      return;
+    }
+    await act("changePw", async () => {
+      const res = await apiJson<{ ok?: boolean; error?: string }>(
+        "/api/user/profile",
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ currentPassword: currentPw, newPassword: newPw }),
+        }
+      );
+      if (res.error) {
+        setError(res.error);
+        return;
+      }
+      setNotice("Đã đổi mật khẩu thành công.");
+      setCurrentPw("");
+      setNewPw("");
+      setConfirmPw("");
+    });
+  }
+
   return (
     <PullToRefresh onRefresh={load}>
     <div className="shell">
@@ -186,29 +234,128 @@ export default function Settings({
         </p>
       )}
 
-      {/* Tài khoản */}
+      {/* Hồ sơ — avatar lớn + tên + email, giống Splitwise */}
       <section className="section">
         <div className="section-head">
-          <h2 className="section-title">Tài khoản</h2>
+          <h2 className="section-title">Hồ sơ</h2>
         </div>
-        <div className="card card-pad">
-          <div className="row">
-            <span>
-              <strong>{user.name}</strong>
+        <div className="card card-pad stack">
+          <div className="profile-header">
+            <button
+              type="button"
+              className="profile-avatar-btn"
+              onClick={() => setShowAvatarPicker(!showAvatarPicker)}
+              aria-label="Đổi avatar"
+            >
+              <Avatar avatarId={selectedAvatar} name={user.name} size={72} />
+              <span className="profile-avatar-edit">✏️</span>
+            </button>
+            <div className="profile-info">
+              <strong style={{ fontSize: 20 }}>{editName}</strong>
               <span className="faint" style={{ display: "block" }}>
                 {user.email}
               </span>
-            </span>
-            <span className="spacer" />
+            </div>
+          </div>
+
+          {showAvatarPicker && (
+            <div style={{ borderTop: "1px solid var(--rule)", paddingTop: 14 }}>
+              <AvatarPicker
+                current={selectedAvatar}
+                onSelect={(id) => {
+                  setSelectedAvatar(id);
+                  void saveProfile("avatar", id);
+                  setShowAvatarPicker(false);
+                }}
+              />
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Đổi tên hiển thị */}
+      <section className="section">
+        <div className="section-head">
+          <h2 className="section-title">Tên hiển thị</h2>
+        </div>
+        <div className="card card-pad stack">
+          <div className="row">
+            <input
+              className="input"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              placeholder="Tên của bạn"
+              aria-label="Tên hiển thị"
+            />
             <button
               type="button"
-              className="btn btn-sm"
-              onClick={() => signOut({ callbackUrl: "/dang-nhap" })}
-              disabled={busy === "logout"}
+              className="btn"
+              disabled={busy === "save-name" || !editName.trim() || editName.trim() === user.name}
+              onClick={() => void saveProfile("name", editName.trim())}
             >
-              {busy === "logout" ? <IconSpinner size={ICON_SIZE.sm} /> : <IconSignOut size={ICON_SIZE.sm} />} Đăng xuất
+              {busy === "save-name" ? <IconSpinner size={ICON_SIZE.sm} /> : "Lưu"}
             </button>
           </div>
+        </div>
+      </section>
+
+      {/* Đổi mật khẩu */}
+      <section className="section">
+        <div className="section-head">
+          <h2 className="section-title">Đổi mật khẩu</h2>
+        </div>
+        <div className="card card-pad stack">
+          <div className="field">
+            <label className="label" htmlFor="currentPw">
+              Mật khẩu hiện tại
+            </label>
+            <input
+              id="currentPw"
+              type="password"
+              className="input"
+              value={currentPw}
+              onChange={(e) => setCurrentPw(e.target.value)}
+              autoComplete="current-password"
+            />
+          </div>
+          <div className="field">
+            <label className="label" htmlFor="newPw">
+              Mật khẩu mới
+            </label>
+            <input
+              id="newPw"
+              type="password"
+              className="input"
+              value={newPw}
+              onChange={(e) => setNewPw(e.target.value)}
+              minLength={6}
+              autoComplete="new-password"
+            />
+          </div>
+          <div className="field">
+            <label className="label" htmlFor="confirmPw">
+              Xác nhận mật khẩu mới
+            </label>
+            <input
+              id="confirmPw"
+              type="password"
+              className="input"
+              value={confirmPw}
+              onChange={(e) => setConfirmPw(e.target.value)}
+              minLength={6}
+              autoComplete="new-password"
+            />
+          </div>
+          <button
+            type="button"
+            className="btn btn-primary btn-block"
+            disabled={busy === "changePw" || !newPw || !confirmPw}
+            onClick={() => void changePassword()}
+          >
+            {busy === "changePw" ? (
+              <><IconSpinner size={ICON_SIZE.sm} /> Đang đổi...</>
+            ) : "Đổi mật khẩu"}
+          </button>
         </div>
       </section>
 
@@ -362,7 +509,7 @@ export default function Settings({
               <CopyButton label="Copy mã" text={group.inviteCode} />
             </div>
             <p className="hint">
-              Gửi mã này cho người khác, họ nhập ở phần “Vào nhóm bằng mã mời” là
+              Gửi mã này cho người khác, họ nhập ở phần "Vào nhóm bằng mã mời" là
               tham gia được.
             </p>
           </div>
@@ -451,6 +598,7 @@ export default function Settings({
               {members.map((m) => (
                 <li key={m.userId}>
                   <div className="entry" style={{ cursor: "default" }}>
+                    <Avatar avatarId={m.avatar} name={m.name} size={36} />
                     <span className="entry-main">
                       <span className="entry-title">
                         {m.name}
@@ -582,14 +730,22 @@ export default function Settings({
                 <IconFileCsv size={ICON_SIZE.sm} /> Tải CSV thanh toán
               </a>
             </div>
-            {/*
-              Khối "Sao lưu lên GitHub" đã ẩn khỏi UI theo yêu cầu: backup DB
-              chạy hoàn toàn tự động qua crontab gọi /api/cron/backup. Endpoint
-              /api/backup-db vẫn còn để gọi tay khi cần debug.
-            */}
           </div>
         </section>
       )}
+
+      {/* Đăng xuất */}
+      <section className="section">
+        <button
+          type="button"
+          className="btn btn-block"
+          style={{ color: "var(--red)" }}
+          onClick={() => signOut({ callbackUrl: "/dang-nhap" })}
+          disabled={busy === "logout"}
+        >
+          {busy === "logout" ? <IconSpinner size={ICON_SIZE.sm} /> : <IconSignOut size={ICON_SIZE.sm} />} Đăng xuất
+        </button>
+      </section>
 
       {/* ponytail: section Trợ lý AI ẩn khỏi UI — hiện lại khi cần debug AI config */}
     </div>

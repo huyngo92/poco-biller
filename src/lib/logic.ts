@@ -33,11 +33,11 @@ export function getReminders(groupId: number): Reminder[] {
 
   const members = db
     .prepare(
-      `SELECT u.id AS userId, u.name, u.email, m.role
+      `SELECT u.id AS userId, u.name, u.email, m.role, u.avatar
          FROM memberships m JOIN users u ON u.id = m.user_id
         WHERE m.group_id = ?`
     )
-    .all(groupId) as { userId: number; name: string; email: string; role: "admin" | "member" }[];
+    .all(groupId) as { userId: number; name: string; email: string; role: "admin" | "member"; avatar: string }[];
 
   if (members.length === 0) return [];
 
@@ -65,7 +65,7 @@ export function getReminders(groupId: number): Reminder[] {
   const memberIds = new Set(members.map((m) => m.userId));
   for (const s of shareRows) {
     if (!memberIds.has(s.userId)) {
-      members.push({ userId: s.userId, name: s.name, email: "", role: "member" });
+      members.push({ userId: s.userId, name: s.name, email: "", role: "member", avatar: "" });
       memberIds.add(s.userId);
     }
   }

@@ -1692,3 +1692,86 @@ input[type="checkbox"] {
   color: var(--label);
   font-weight: 600;
 }
+
+/* ---------- Profile & Avatar ---------- */
+
+.profile-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.profile-avatar-btn {
+  position: relative;
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.profile-avatar-edit {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--bg-elevated);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.profile-info {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Lưới avatar chọn — giống Splitwise */
+.avatar-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.avatar-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  justify-items: center;
+}
+
+@media (max-width: 380px) {
+  .avatar-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.avatar-option {
+  appearance: none;
+  background: none;
+  border: 3px solid transparent;
+  border-radius: 50%;
+  padding: 2px;
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease-ios),
+    transform var(--dur-fast) var(--ease-ios);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.avatar-option:hover {
+  border-color: var(--fill-tertiary);
+}
+
+.avatar-option.selected {
+  border-color: var(--tint);
+}
+
+.avatar-option:active {
+  transform: scale(0.92);
+}

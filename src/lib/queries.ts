@@ -82,7 +82,7 @@ export function assertMember(groupId: number, userId: number): "admin" | "member
 export function listMembers(groupId: number): Member[] {
   return getDb()
     .prepare(
-      `SELECT u.id AS userId, u.name, u.email, m.role
+      `SELECT u.id AS userId, u.name, u.email, m.role, u.avatar
          FROM memberships m JOIN users u ON u.id = m.user_id
         WHERE m.group_id = ?
         ORDER BY m.joined_at`
