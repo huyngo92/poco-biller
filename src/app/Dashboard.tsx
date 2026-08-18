@@ -14,19 +14,23 @@ import {
 import GroupPicker from "@/components/GroupPicker";
 import PullToRefresh from "@/components/PullToRefresh";
 import BillSheet from "@/components/BillSheet";
+import GroupProgress from "@/components/GroupProgress";
+import Badges from "@/components/Badges";
+import Mascot from "@/components/Mascot";
 import Avatar from "@/components/Avatar";
+import { categoryIcon } from "@/lib/avatars";
 import {
-  CategoryDonut,
-  PaidRanking,
-  SpendBars,
-  TrendSpark,
-} from "@/components/Charts";
+  computeBadges,
+  groupProgress,
+  teamEnergy,
+} from "@/lib/gamification";
+import { CategoryDonut, TrendSpark } from "@/components/Charts";
 import {
   IconAdd,
   IconAlert,
-  IconBack,
   IconChevron,
-  IconSettle,
+  IconLedger,
+  IconReceiveCircle,
   ICON_SIZE,
 } from "@/components/Icons";
 
@@ -42,6 +46,9 @@ const MONTH_SHORT = [
   "T7", "T8", "T9", "T10", "T11", "T12",
 ];
 
+/** Số bill gần nhất hiện trong phần xem trước — còn lại xem hết ở tab Bill. */
+const PREVIEW_COUNT = 3;
+
 export default function Dashboard({
   user,
   groups: initialGroups,
@@ -51,12 +58,15 @@ export default function Dashboard({
 }) {
   const [groups] = useState(initialGroups);
   const [group, setGroup] = useState<Group | null>(null);
-  const [kind, setKind] = useState<PeriodKind>("month");
-  const [offset, setOffset] = useState(0);
   const [data, setData] = useState<Overview | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [openBill, setOpenBill] = useState<Bill | null>(null);
+
+  // Kỳ xem riêng cho phần "Xu hướng chi tiêu" / "Tiền đi vào đâu" — phần còn
+  // lại của trang (số dư, tiến độ, huy hiệu, bill gần đây) luôn xem "Tất cả".
+  const [chartKind, setChartKind] = useState<PeriodKind>("month");
+  const [chartData, setChartData] = useState<Overview | null>(null);
 
   useEffect(() => {
     setGroup(resolveGroup(groups));
@@ -68,7 +78,7 @@ export default function Dashboard({
     setError("");
     try {
       const res = await apiJson<Overview>(
-        `/api/groups/${group.id}/overview?period=${kind}&offset=${offset}`
+        `/api/groups/${group.id}/overview?period=all&offset=0`
       );
       setData(res);
     } catch (e) {
@@ -76,19 +86,61 @@ export default function Dashboard({
     } finally {
       setLoading(false);
     }
-  }, [group, kind, offset]);
+  }, [group]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  const myBalance = useMemo(
-    () => data?.balances.find((b) => b.userId === user.id) ?? null,
+  useEffect(() => {
+    if (!group) return;
+    apiJson<Overview>(`/api/groups/${group.id}/overview?period=${chartKind}&offset=0`)
+      .then(setChartData)
+      .catch(() => setChartData(null));
+  }, [group, chartKind]);
+
+  // Số cần trả / sẽ nhận tách riêng — suy từ transfer trực tiếp đã có sẵn
+  // trong Overview (suggestDirectTransfers), không đổi logic balance.ts.
+  const oweTotal = useMemo(
+    () =>
+      (data?.transfers ?? [])
+        .filter((t) => t.fromUserId === user.id)
+        .reduce((sum, t) => sum + t.amount, 0),
+    [data, user.id]
+  );
+  const receiveTotal = useMemo(
+    () =>
+      (data?.transfers ?? [])
+        .filter((t) => t.toUserId === user.id)
+        .reduce((sum, t) => sum + t.amount, 0),
     [data, user.id]
   );
 
-  const maxAbs = useMemo(
-    () => Math.max(1, ...(data?.balances ?? []).map((b) => Math.abs(b.net))),
+  const memberAvatars = useMemo(() => {
+    const m = new Map<number, string>();
+    for (const mem of data?.members ?? []) m.set(mem.userId, mem.avatar);
+    return m;
+  }, [data]);
+
+  // Gamification cộng tác — suy hoàn toàn từ dữ liệu Overview đã tải.
+  const progress = useMemo(
+    () =>
+      data ? groupProgress(data.members, data.bills, data.settlements) : null,
+    [data]
+  );
+  const energy = useMemo(
+    () => (data ? teamEnergy(data.members, data.bills, data.settlements) : null),
+    [data]
+  );
+  const badges = useMemo(
+    () =>
+      data
+        ? computeBadges({
+            members: data.members,
+            bills: data.bills,
+            settlements: data.settlements,
+          })
+        : [],
     [data]
   );
 
@@ -96,10 +148,11 @@ export default function Dashboard({
     return (
       <div className="shell">
         <header className="topbar">
-          <span className="brand-mark" aria-hidden="true" />
+          <IconLedger size={ICON_SIZE.tab} style={{ color: "var(--tint-strong)" }} />
           <span className="brand">Poco Biller</span>
         </header>
         <div className="card card-pad empty">
+          <Mascot name="celebrate" size={128} />
           <p className="empty-title">Bạn chưa ở trong nhóm nào</p>
           <p className="muted">Tạo nhóm mới hoặc nhập mã mời để bắt đầu ghi bill.</p>
           <Link href="/cai-dat" className="btn btn-primary" style={{ marginTop: 12 }}>
@@ -110,48 +163,33 @@ export default function Dashboard({
     );
   }
 
+  const preview = data?.bills.slice(0, PREVIEW_COUNT) ?? [];
+
   return (
     <PullToRefresh onRefresh={load}>
     <div className="shell">
-      <header className="topbar">
-        <span className="brand-mark" aria-hidden="true" />
-        <span className="brand">Poco Biller</span>
-        <span className="spacer" />
-        {group && (
-          <GroupPicker
-            groups={groups}
-            current={group}
-            onChange={(g) => {
-              rememberGroupId(g.id);
-              setGroup(g);
-              setOffset(0);
-            }}
-          />
-        )}
+      <header className="topbar" style={{ flexWrap: "wrap" }}>
+        <div className="row" style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ minWidth: 0 }}>
+            <span className="brand" style={{ display: "block" }}>
+              Chào {user.name.split(" ")[0] || user.name}!
+            </span>
+            {group && (
+              <GroupPicker
+                groups={groups}
+                current={group}
+                onChange={(g) => {
+                  rememberGroupId(g.id);
+                  setGroup(g);
+                }}
+              />
+            )}
+          </div>
+        </div>
+        <Link href="/cai-dat" aria-label="Cá nhân">
+          <Avatar avatarId={user.avatar} name={user.name} size={40} />
+        </Link>
       </header>
-
-      {/* Kỳ xem là lựa chọn loại trừ nhau → segmented control, không phải chip */}
-      <div
-        className="segmented"
-        role="group"
-        aria-label="Kỳ xem"
-        style={{ marginBottom: 14 }}
-      >
-        {PERIODS.map((p) => (
-          <button
-            key={p.kind}
-            type="button"
-            className="segment"
-            aria-pressed={kind === p.kind}
-            onClick={() => {
-              setKind(p.kind);
-              setOffset(0);
-            }}
-          >
-            {p.label}
-          </button>
-        ))}
-      </div>
 
       {error && (
         <p className="error" style={{ marginBottom: 14 }} role="alert">
@@ -160,56 +198,83 @@ export default function Dashboard({
         </p>
       )}
 
-      {/* Số dư của tôi */}
-      <section className="section">
-        <div className="card">
-          <div className="card-pad">
-            <div className="row" style={{ marginBottom: 2 }}>
-              <span className="stat-label" style={{ margin: 0 }}>
-                {myBalance && myBalance.net < 0
-                  ? "Bạn còn phải trả"
-                  : myBalance && myBalance.net > 0
-                    ? "Nhóm còn nợ bạn"
-                    : "Bạn đã cân bằng"}
+      {/* Tiến độ nhóm (gamification cộng tác) — chỉ khi kỳ đã có bill */}
+      {data && data.bills.length > 0 && progress && (
+        <section className="section">
+          {energy && (
+            <div className="section-head">
+              <span className={`energy-chip energy-${energy.state}`}>
+                {energy.label}
               </span>
-              <span className="spacer" />
-              {kind !== "all" && (
-                <span className="row" style={{ gap: 2 }}>
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-icon btn-sm"
-                    onClick={() => setOffset(offset - 1)}
-                    aria-label="Kỳ trước"
-                  >
-                    <IconBack size={ICON_SIZE.md} />
-                  </button>
-                  <span className="faint">{data?.period.label ?? "…"}</span>
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-icon btn-sm"
-                    onClick={() => setOffset(Math.min(0, offset + 1))}
-                    disabled={offset >= 0}
-                    aria-label="Kỳ sau"
-                  >
-                    <IconChevron size={ICON_SIZE.md} />
-                  </button>
-                </span>
-              )}
             </div>
-            <p
-              className={`num amount-lg ${
-                myBalance && myBalance.net < 0
-                  ? "debt"
-                  : myBalance && myBalance.net > 0
-                    ? "credit"
-                    : ""
-              }`}
-              style={{ margin: 0 }}
-            >
-              {loading && !data
-                ? "…"
-                : formatVnd(Math.abs(myBalance?.net ?? 0))}
-            </p>
+          )}
+          <GroupProgress progress={progress} groupName={group?.name} />
+        </section>
+      )}
+
+      {/* Số dư của tôi — tách 2 chiều cần trả / sẽ nhận */}
+      <section className="section">
+        <div className="card card-wavy">
+          <div className="card-pad">
+            <div className="row" style={{ marginBottom: 8 }}>
+              <span className="stat-label" style={{ margin: 0 }}>
+                Số dư của bạn
+              </span>
+            </div>
+
+            {loading && !data ? (
+              <p className="num amount-lg" style={{ margin: 0 }}>
+                …
+              </p>
+            ) : oweTotal <= 0 && receiveTotal <= 0 ? (
+              <p className="num amount-lg" style={{ margin: 0 }}>
+                Bạn đã cân bằng
+              </p>
+            ) : (
+              <div>
+                {oweTotal > 0 && (
+                  <div className="owe-row">
+                    <span className="owe-ic owe-ic-warn">
+                      <IconAlert filled size={ICON_SIZE.md} />
+                    </span>
+                    <p style={{ margin: 0, flex: 1 }}>
+                      <span className="faint" style={{ display: "block" }}>
+                        Bạn còn
+                      </span>
+                      <span
+                        className="num debt"
+                        style={{ fontSize: 24, fontWeight: 700 }}
+                      >
+                        {formatVnd(oweTotal)}
+                      </span>
+                      <span className="faint" style={{ display: "block" }}>
+                        cần thanh toán
+                      </span>
+                    </p>
+                    <Link href="/nhac-no" className="btn btn-primary btn-pill">
+                      Thanh toán ngay
+                    </Link>
+                  </div>
+                )}
+                {receiveTotal > 0 && (
+                  <div className="owe-row">
+                    <span className="owe-ic owe-ic-ok">
+                      <IconReceiveCircle filled size={ICON_SIZE.md} />
+                    </span>
+                    <p style={{ margin: 0, flex: 1 }}>
+                      <span className="faint">Bạn sẽ nhận</span>{" "}
+                      <span
+                        className="num credit"
+                        style={{ fontSize: 20, fontWeight: 700 }}
+                      >
+                        {formatVnd(receiveTotal)}
+                      </span>
+                    </p>
+                    <IconChevron size={ICON_SIZE.sm} className="entry-chevron" />
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="stats">
@@ -227,128 +292,82 @@ export default function Dashboard({
         </div>
       </section>
 
-      {/* Chart chỉ có ý nghĩa khi trong kỳ đã có bill */}
+      {/* Chart chính — kỳ xem riêng, không ảnh hưởng số dư/tiến độ/bill gần đây */}
       {data && data.bills.length > 0 && (
         <>
-          {/* Xu hướng — "all" không có kỳ trước nên API trả trend rỗng */}
-          {data.trend.length >= 2 && (
+          <div
+            className="segmented"
+            role="group"
+            aria-label="Kỳ xem biểu đồ"
+            style={{ marginBottom: 14 }}
+          >
+            {PERIODS.map((p) => (
+              <button
+                key={p.kind}
+                type="button"
+                className="segment"
+                aria-pressed={chartKind === p.kind}
+                onClick={() => setChartKind(p.kind)}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+
+          {chartData && chartData.trend.length >= 2 && (
             <section className="section">
               <div className="section-head">
                 <h2 className="section-title">Xu hướng chi tiêu</h2>
               </div>
               <div className="card card-pad">
-                <TrendSpark trend={data.trend} />
+                <TrendSpark trend={chartData.trend} />
               </div>
             </section>
           )}
 
           <section className="section">
             <div className="section-head">
-              <h2 className="section-title">
-                Chi theo {kind === "week" ? "ngày" : "thời gian"}
-              </h2>
-            </div>
-            <div className="card card-pad">
-              <SpendBars
-                bills={data.bills}
-                from={data.period.from}
-                to={data.period.to}
-              />
-            </div>
-          </section>
-
-          <section className="section">
-            <div className="section-head">
               <h2 className="section-title">Tiền đi vào đâu</h2>
             </div>
-            <div className="card card-pad">
-              <CategoryDonut
-                data={data.totals.byCategory}
-                total={data.totals.spent}
-              />
-            </div>
+            {chartData && chartData.bills.length > 0 ? (
+              <div className="card card-pad">
+                <CategoryDonut
+                  data={chartData.totals.byCategory}
+                  total={chartData.totals.spent}
+                />
+              </div>
+            ) : (
+              <div className="card card-pad muted">Kỳ này chưa có bill nào</div>
+            )}
           </section>
 
-          <section className="section">
-            <div className="section-head">
-              <h2 className="section-title">Ai ứng nhiều nhất</h2>
-            </div>
-            <div className="card card-pad">
-              <PaidRanking balances={data.balances} currentUserId={user.id} />
-            </div>
-          </section>
+          {badges.some((b) => b.earned) && (
+            <section className="section">
+              <div className="section-head">
+                <h2 className="section-title">Huy hiệu nhóm</h2>
+              </div>
+              <Badges badges={badges} showLocked={false} />
+            </section>
+          )}
         </>
       )}
 
-      {/* Dải số dư cả nhóm */}
-      {data && data.balances.length > 0 && (
-        <section className="section">
-          <div className="section-head">
-            <h2 className="section-title">Số dư từng người</h2>
-          </div>
-          <div className="card balances">
-            {data.balances
-              .slice()
-              .sort((a, b) => a.net - b.net)
-              .map((b) => {
-                const pct = (Math.abs(b.net) / maxAbs) * 50;
-                return (
-                  <div className="bal-row" key={b.userId}>
-                    <div className="bal-head">
-                      <Avatar avatarId={b.avatar} name={b.name} size={28} />
-                      <span className="bal-name">
-                        {b.name}
-                        {b.userId === user.id && (
-                          <span className="tag tag-blue" style={{ marginLeft: 6 }}>
-                            Bạn
-                          </span>
-                        )}
-                      </span>
-                      <span
-                        className={`num bal-net ${
-                          b.net < 0 ? "debt" : b.net > 0 ? "credit" : "muted"
-                        }`}
-                      >
-                        {b.net === 0
-                          ? "Cân bằng"
-                          : b.net < 0
-                            ? `nợ ${formatShort(-b.net)}`
-                            : `nhận ${formatShort(b.net)}`}
-                      </span>
-                    </div>
-                    <div className="bal-track">
-                      <div
-                        className={`bal-fill ${b.net < 0 ? "neg" : "pos"}`}
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                    <p className="faint tiny" style={{ margin: 0 }}>
-                      Đã ứng {formatShort(b.paid)} · phần phải trả{" "}
-                      {formatShort(b.owed)}
-                    </p>
-                  </div>
-                );
-              })}
-          </div>
-        </section>
-      )}
-
-      {/* Danh sách bill */}
+      {/* Bill gần đây — chỉ xem trước, danh sách đầy đủ ở tab Bill */}
       <section className="section">
         <div className="section-head">
-          <h2 className="section-title">Bill trong kỳ</h2>
+          <h2 className="section-title">Bill gần đây</h2>
           <span className="spacer" />
-          <Link href="/them" className="link tiny">
-            Thêm bill
+          <Link href="/bill" className="link tiny">
+            Xem tất cả
           </Link>
         </div>
 
         {loading && !data ? (
           <div className="card card-pad muted">Đang tải…</div>
-        ) : data && data.bills.length > 0 ? (
+        ) : preview.length > 0 ? (
           <div className="card">
             <ul className="ledger">
-              {data.bills.map((b) => {
+              {preview.map((b) => {
                 const mine = b.shares.find((s) => s.userId === user.id);
                 const [, m, d] = b.spentOn.split("-");
                 return (
@@ -363,23 +382,41 @@ export default function Dashboard({
                         <br />
                         <span className="m">{MONTH_SHORT[Number(m) - 1]}</span>
                       </span>
+                      <span className="cat-ic" aria-hidden="true">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={categoryIcon(b.category)} alt="" />
+                      </span>
                       <span className="entry-main">
                         <span className="entry-title">{b.title}</span>
-                        <span className="faint" style={{ display: "block" }}>
-                          {b.paidByName} ứng · {categoryLabel(b.category)} ·{" "}
-                          {b.shares.length} người
+                        <span className="row" style={{ marginTop: 4, gap: 6 }}>
+                          <span className="avatar-stack">
+                            {b.shares.slice(0, 3).map((s) => (
+                              <Avatar
+                                key={s.userId}
+                                avatarId={memberAvatars.get(s.userId)}
+                                name={s.name}
+                                size={20}
+                              />
+                            ))}
+                          </span>
+                          <span className="faint tiny">
+                            {categoryLabel(b.category)}
+                          </span>
                         </span>
                       </span>
                       <span className="entry-amount">
                         <span className="num">{formatShort(b.total)}</span>
                         <span
-                          className="faint tiny num"
+                          className={`tiny num ${
+                            b.paidBy === user.id ? "credit" : "debt"
+                          }`}
                           style={{ display: "block" }}
                         >
-                          {mine ? `bạn ${formatShort(mine.amount)}` : "bạn 0"}
+                          {b.paidBy === user.id
+                            ? `bạn nhận ${formatShort(b.total - (mine?.amount ?? 0))}`
+                            : `bạn trả ${formatShort(mine?.amount ?? 0)}`}
                         </span>
                       </span>
-                      {/* Disclosure indicator: dấu hiệu thị giác cho dòng bấm được */}
                       <IconChevron
                         size={ICON_SIZE.sm}
                         className="entry-chevron"
@@ -392,6 +429,7 @@ export default function Dashboard({
           </div>
         ) : (
           <div className="card card-pad empty">
+            <Mascot name="scan" size={128} />
             <p className="empty-title">Kỳ này chưa có bill nào</p>
             <p className="muted">
               Chụp hoá đơn, gõ một câu cho AI, hoặc nhập tay — cách nào cũng được.
@@ -402,41 +440,6 @@ export default function Dashboard({
           </div>
         )}
       </section>
-
-      {/* Lịch sử trả nợ */}
-      {data && data.settlements.length > 0 && (
-        <section className="section">
-          <div className="section-head">
-            <h2 className="section-title">Đã trả nhau</h2>
-          </div>
-          <div className="card">
-            <ul className="ledger">
-              {data.settlements.map((s) => (
-                <li key={s.id}>
-                  <div className="entry" style={{ cursor: "default" }}>
-                    <IconSettle
-                      size={ICON_SIZE.md}
-                      className="entry-chevron"
-                    />
-                    <span className="entry-main">
-                      <span className="entry-title">
-                        {s.fromName} → {s.toName}
-                      </span>
-                      <span className="faint" style={{ display: "block" }}>
-                        {s.paidOn.split("-").reverse().join("/")}
-                        {s.note ? ` · ${s.note}` : ""}
-                      </span>
-                    </span>
-                    <span className="entry-amount num credit">
-                      {formatShort(s.amount)}
-                    </span>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </section>
-      )}
 
       {openBill && (
         <BillSheet

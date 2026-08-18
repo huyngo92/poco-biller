@@ -6,7 +6,7 @@ import {
   listSettlements,
   sumBills,
 } from "@/lib/queries";
-import { computeBalances, suggestTransfers } from "@/lib/balance";
+import { computeBalances, suggestDirectTransfers } from "@/lib/balance";
 import { recentPeriods, resolvePeriod, shortPeriodLabel } from "@/lib/period";
 import { fail, ok } from "@/lib/api";
 import type { PeriodKind } from "@/lib/types";
@@ -53,7 +53,7 @@ export async function GET(req: Request, { params }: Ctx) {
       bills,
       settlements,
       balances,
-      transfers: suggestTransfers(balances),
+      transfers: suggestDirectTransfers(members, bills, settlements),
       totals: {
         spent: bills.reduce((a, b) => a + b.total, 0),
         billCount: bills.length,

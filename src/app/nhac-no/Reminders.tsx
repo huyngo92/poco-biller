@@ -5,13 +5,15 @@ import type { Group, SessionUser } from "@/lib/types";
 import type { Reminder } from "@/lib/logic";
 import { apiJson, rememberGroupId, resolveGroup } from "@/lib/client";
 import { formatVnd } from "@/lib/money";
-import { REMINDER_QUOTES, GROUP_SUMMARY_QUOTES, pickQuote } from "@/lib/quotes";
+import { GROUP_SUMMARY_QUOTES, pickQuote } from "@/lib/quotes";
 import { today } from "@/lib/period";
 import { sepayQrUrl } from "@/lib/qr";
 import GroupPicker from "@/components/GroupPicker";
 import PullToRefresh from "@/components/PullToRefresh";
 import CopyButton from "@/components/CopyButton";
 import CopyImageButton from "@/components/CopyImageButton";
+import Celebration from "@/components/Celebration";
+import ReminderToneSheet from "@/components/ReminderToneSheet";
 import {
   IconAlert,
   IconArrowRight,
@@ -45,40 +47,22 @@ function generateGroupSummaryMessage(groupName: string, reminders: Reminder[]): 
   return `${quote}\n\nNhóm ${groupName} — sao kê nợ:\n${lines}\n\nTổng cộng: ${formatVnd(total)}`;
 }
 
-function generateReminderMessage(reminder: Reminder): string {
-  const { debtor, creditor, amount } = reminder;
-  const quote = pickQuote(REMINDER_QUOTES);
-
-  let message = `${quote}\n\n${debtor.name} ơi, còn nợ ${creditor.user.name} ${formatVnd(amount)} tiền bill nhóm chưa trả nha.`;
-
-  if (creditor.bankAccount) {
-    const { bank, accountName, accountNumber } = creditor.bankAccount;
-    message += `\n\n💳 Chuyển khoản:`;
-    if (bank) {
-      message += `\n• Ngân hàng: ${bank.shortName}`;
-    }
-    message += `\n• Số tài khoản: ${accountNumber}`;
-    message += `\n• Chủ tài khoản: ${accountName}`;
-  }
-
-  message += `\n\nChuyển nhanh lên bạn ơi! 🙏`;
-  return message;
-}
-
 function ReminderCard({
   reminder,
   currentUserId,
   confirming,
   settling,
   onSettle,
+  groupName,
 }: {
   reminder: Reminder;
   currentUserId: number;
   confirming: boolean;
   settling: boolean;
   onSettle: () => void;
+  groupName: string;
 }) {
-  const message = generateReminderMessage(reminder);
+  const [toneOpen, setToneOpen] = useState(false);
   const { debtor, creditor, amount } = reminder;
   const bankAccount = creditor.bankAccount;
 
@@ -145,11 +129,20 @@ function ReminderCard({
           <CopyImageButton imageUrl={qrUrl} label="Copy ảnh QR" />
         </div>
       )}
-      <CopyButton
-        text={message}
-        label="Copy lời nhắc"
-        className="btn-block"
-      />
+      <button
+        type="button"
+        className="btn btn-block"
+        onClick={() => setToneOpen(true)}
+      >
+        <IconBell size={ICON_SIZE.sm} /> Gửi lời nhắc
+      </button>
+      {toneOpen && (
+        <ReminderToneSheet
+          reminder={reminder}
+          groupName={groupName}
+          onClose={() => setToneOpen(false)}
+        />
+      )}
       {canConfirm && (
         <button
           type="button"
@@ -317,15 +310,17 @@ export default function Reminders({
       {loading ? (
         <div className="empty">Đang tính toán...</div>
       ) : reminders.length === 0 ? (
-        <div className="empty stack" style={{ gap: 12 }}>
-          <p className="empty-title">Sòng phẳng!</p>
-          <p>Mọi người trong nhóm đã thanh toán hết nợ cho nhau.</p>
-          <CopyButton
-            text={generateGroupSummaryMessage(group?.name ?? "", reminders)}
-            label="Copy sao kê cho nhóm"
-            className="btn btn-block"
-          />
-        </div>
+        <Celebration
+          title="Sòng phẳng!"
+          subtitle="Mọi người trong nhóm đã thanh toán hết nợ cho nhau."
+          actions={
+            <CopyButton
+              text={generateGroupSummaryMessage(group?.name ?? "", reminders)}
+              label="Copy sao kê cho nhóm"
+              className="btn btn-block"
+            />
+          }
+        />
       ) : (
         <div className="stack" style={{ gap: 28 }}>
           {myDebts.length > 0 && (
@@ -337,6 +332,7 @@ export default function Reminders({
                     key={`my-debt-${i}`}
                     reminder={r}
                     currentUserId={user.id}
+                    groupName={group?.name ?? ""}
                     confirming={confirmingKey === reminderKey(r)}
                     settling={settlingKey === reminderKey(r)}
                     onSettle={() => handleSettle(r)}
@@ -354,6 +350,7 @@ export default function Reminders({
                     key={`to-me-${i}`}
                     reminder={r}
                     currentUserId={user.id}
+                    groupName={group?.name ?? ""}
                     confirming={confirmingKey === reminderKey(r)}
                     settling={settlingKey === reminderKey(r)}
                     onSettle={() => handleSettle(r)}
@@ -371,6 +368,7 @@ export default function Reminders({
                     key={`other-${i}`}
                     reminder={r}
                     currentUserId={user.id}
+                    groupName={group?.name ?? ""}
                     confirming={confirmingKey === reminderKey(r)}
                     settling={settlingKey === reminderKey(r)}
                     onSettle={() => handleSettle(r)}

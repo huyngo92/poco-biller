@@ -57,6 +57,8 @@ export type Bill = {
   note: string;
   splitMode: SplitMode;
   source: string;
+  createdBy: number;
+  createdByName: string;
   shares: BillShare[];
 };
 

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { apiJson } from "@/lib/client";
 import { formatVnd } from "@/lib/money";
 import { categoryLabel, SPLIT_MODE_LABEL, type Bill } from "@/lib/types";
+import { categoryIcon } from "@/lib/avatars";
 import { formatDateVn } from "@/lib/period";
 import { IconAlert, IconClose, IconTrash, IconSpinner, ICON_SIZE } from "./Icons";
 
@@ -53,7 +54,11 @@ export default function BillSheet({
     >
       <div className="sheet">
         <div className="row" style={{ marginBottom: 4 }}>
-          <h2>{bill.title}</h2>
+          <span className="cat-ic cat-ic-lg" aria-hidden="true">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={categoryIcon(bill.category)} alt="" />
+          </span>
+          <h2 style={{ margin: 0 }}>{bill.title}</h2>
           <span className="spacer" />
           {/* Nút đóng tròn ở góc phải — quy ước của sheet iOS */}
           <button
@@ -113,48 +118,52 @@ export default function BillSheet({
           </p>
         )}
 
-        <div className="divider" />
+        {bill.createdBy === currentUserId && (
+          <>
+            <div className="divider" />
 
-        {confirming ? (
-          <div className="stack">
-            <p className="muted" style={{ margin: 0 }}>
-              Xoá bill này khỏi sổ? Số dư của mọi người sẽ được tính lại.
-            </p>
-            <div className="row">
+            {confirming ? (
+              <div className="stack">
+                <p className="muted" style={{ margin: 0 }}>
+                  Xoá bill này khỏi sổ? Số dư của mọi người sẽ được tính lại.
+                </p>
+                <div className="row">
+                  <button
+                    type="button"
+                    className="btn btn-danger"
+                    onClick={remove}
+                    disabled={busy}
+                  >
+                    {busy ? (
+                      <>
+                        <IconSpinner size={ICON_SIZE.sm} /> Đang xoá…
+                      </>
+                    ) : (
+                      <>
+                        <IconTrash size={ICON_SIZE.sm} /> Xoá bill
+                      </>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() => setConfirming(false)}
+                    disabled={busy}
+                  >
+                    Giữ lại
+                  </button>
+                </div>
+              </div>
+            ) : (
               <button
                 type="button"
-                className="btn btn-danger"
-                onClick={remove}
-                disabled={busy}
+                className="btn btn-danger btn-block"
+                onClick={() => setConfirming(true)}
               >
-                {busy ? (
-                  <>
-                    <IconSpinner size={ICON_SIZE.sm} /> Đang xoá…
-                  </>
-                ) : (
-                  <>
-                    <IconTrash size={ICON_SIZE.sm} /> Xoá bill
-                  </>
-                )}
+                <IconTrash size={ICON_SIZE.sm} /> Xoá bill
               </button>
-              <button
-                type="button"
-                className="btn"
-                onClick={() => setConfirming(false)}
-                disabled={busy}
-              >
-                Giữ lại
-              </button>
-            </div>
-          </div>
-        ) : (
-          <button
-            type="button"
-            className="btn btn-danger btn-block"
-            onClick={() => setConfirming(true)}
-          >
-            <IconTrash size={ICON_SIZE.sm} /> Xoá bill
-          </button>
+            )}
+          </>
         )}
       </div>
     </div>

@@ -23,23 +23,36 @@ import {
   ChevronLeft,
   ChevronRight,
   CircleAlert,
+  CircleArrowDown,
   CircleCheck,
   CloudUpload,
   Copy,
   FileJson,
   FileSpreadsheet,
   Image as ImageBase,
+  LayoutDashboard,
   LoaderCircle,
   LogOut,
   MessageSquareText,
+  Mic,
+  Landmark,
   PlusCircle,
+  QrCode,
   ReceiptText,
+  Search,
+  Send,
   Settings,
+  Shield,
+  SlidersHorizontal,
   Sparkles,
   SquarePen,
   Trash2,
+  User,
   UserPlus,
+  Users,
   X,
+  Zap,
+  ZapOff,
   type LucideProps,
 } from "lucide-react";
 
@@ -86,8 +99,10 @@ function wrap(Base: React.ComponentType<LucideProps>, displayName: string) {
 
 /* ---------- Điều hướng ---------- */
 
-/** Tab "Sổ bill" — SF: doc.plaintext */
-export const IconLedger = wrap(ReceiptText, "IconLedger");
+/** Tab "Tổng quan" — SF: gauge */
+export const IconLedger = wrap(LayoutDashboard, "IconLedger");
+/** Tab "Bill" — SF: doc.plaintext */
+export const IconReceipt = wrap(ReceiptText, "IconReceipt");
 /** Tab "Thêm bill" — SF: plus.circle */
 export const IconAdd = wrap(PlusCircle, "IconAdd");
 /** Tab "Nhắc nợ" — SF: bell */
@@ -114,6 +129,18 @@ export const IconChat = wrap(MessageSquareText, "IconChat");
 export const IconPen = wrap(SquarePen, "IconPen");
 /** Tính năng AI — SF: sparkles */
 export const IconSparkles = wrap(Sparkles, "IconSparkles");
+/** Ô tìm kiếm — SF: magnifyingglass */
+export const IconSearch = wrap(Search, "IconSearch");
+/** Nhập bằng giọng nói — SF: mic */
+export const IconMic = wrap(Mic, "IconMic");
+/** Gửi tin nhắn AI — SF: paperplane */
+export const IconSend = wrap(Send, "IconSend");
+/** Đèn flash camera đang mở — SF: bolt.fill */
+export const IconZap = wrap(Zap, "IconZap");
+/** Đèn flash camera đang tắt — SF: bolt.slash */
+export const IconZapOff = wrap(ZapOff, "IconZapOff");
+/** Lọc theo hạng mục — SF: slider.horizontal.3 */
+export const IconFilter = wrap(SlidersHorizontal, "IconFilter");
 
 /* ---------- Hành động ---------- */
 
@@ -129,8 +156,18 @@ export const IconTrash = wrap(Trash2, "IconTrash");
 export const IconSignOut = wrap(LogOut, "IconSignOut");
 /** SF: person.badge.plus */
 export const IconMemberAdd = wrap(UserPlus, "IconMemberAdd");
+/** Hàng "Tên hiển thị" — SF: person */
+export const IconUser = wrap(User, "IconUser");
+/** Hàng nhóm — SF: person.2 */
+export const IconUsers = wrap(Users, "IconUsers");
 /** SF: arrow.left.arrow.right */
 export const IconSettle = wrap(ArrowLeftRight, "IconSettle");
+/** Bảo mật, đổi mật khẩu — SF: lock.shield */
+export const IconShield = wrap(Shield, "IconShield");
+/** Thông tin ngân hàng/thanh toán — SF: building.columns */
+export const IconBank = wrap(Landmark, "IconBank");
+/** Mã QR chuyển khoản — SF: qrcode */
+export const IconQrCode = wrap(QrCode, "IconQrCode");
 
 /* ---------- Dữ liệu, sao lưu ---------- */
 
@@ -147,6 +184,8 @@ export const IconFileCsv = wrap(FileSpreadsheet, "IconFileCsv");
 export const IconAlert = wrap(CircleAlert, "IconAlert");
 /** SF: checkmark.circle */
 export const IconOk = wrap(CircleCheck, "IconOk");
+/** Số tiền sẽ nhận lại trên thẻ số dư — SF: arrow.down.circle */
+export const IconReceiveCircle = wrap(CircleArrowDown, "IconReceiveCircle");
 
 /**
  * Vòng xoay chờ. Animation nằm ở class `.spinner` trong globals.css để

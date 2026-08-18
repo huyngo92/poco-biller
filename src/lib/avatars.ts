@@ -1,42 +1,51 @@
 /**
- * Bộ avatar có sẵn — mỗi avatar là một id + màu nền + SVG path.
- * Kiểu đơn giản, vui mắt, giống Splitwise.
+ * Bộ avatar minh hoạ của Poco — mỗi avatar là một ảnh tròn trong public/avatars.
+ * Có 12 ảnh (av-1..av-12). Vẫn resolve được các id cũ đã lưu trong DB
+ * (cat, dog, bear, …) bằng cách ánh xạ tất định sang một trong 12 ảnh, nên dữ
+ * liệu cũ không vỡ khi đổi bộ avatar.
  */
 
 export type PresetAvatar = {
   id: string;
   label: string;
-  bg: string;       // CSS background
-  emoji: string;    // dùng emoji cho đơn giản, render bằng text trong vòng tròn
+  src: string; // đường dẫn ảnh tròn trong /public
 };
 
-// ponytail: dùng emoji thay SVG path — nhanh, gọn, đủ dùng.
-// Nâng cấp thành SVG custom khi cần branding riêng.
-export const AVATARS: PresetAvatar[] = [
-  { id: "cat",       label: "Mèo",       bg: "#FF6B6B", emoji: "🐱" },
-  { id: "dog",       label: "Chó",        bg: "#4ECDC4", emoji: "🐶" },
-  { id: "bear",      label: "Gấu",        bg: "#FFD93D", emoji: "🐻" },
-  { id: "rabbit",    label: "Thỏ",        bg: "#FF8FA3", emoji: "🐰" },
-  { id: "fox",       label: "Cáo",        bg: "#FF9F43", emoji: "🦊" },
-  { id: "panda",     label: "Gấu trúc",   bg: "#A8E6CF", emoji: "🐼" },
-  { id: "koala",     label: "Gấu túi",    bg: "#95B8D1", emoji: "🐨" },
-  { id: "lion",      label: "Sư tử",      bg: "#F4A460", emoji: "🦁" },
-  { id: "monkey",    label: "Khỉ",        bg: "#DDA0DD", emoji: "🐵" },
-  { id: "penguin",   label: "Chim cánh cụt", bg: "#87CEEB", emoji: "🐧" },
-  { id: "owl",       label: "Cú",         bg: "#C9B1FF", emoji: "🦉" },
-  { id: "unicorn",   label: "Kỳ lân",     bg: "#FF69B4", emoji: "🦄" },
-  { id: "dragon",    label: "Rồng",       bg: "#98D8C8", emoji: "🐲" },
-  { id: "octopus",   label: "Bạch tuộc",  bg: "#F7DC6F", emoji: "🐙" },
-  { id: "frog",      label: "Ếch",        bg: "#82E0AA", emoji: "🐸" },
-  { id: "tiger",     label: "Hổ",         bg: "#F0B27A", emoji: "🐯" },
-  { id: "whale",     label: "Cá voi",     bg: "#85C1E9", emoji: "🐳" },
-  { id: "chick",     label: "Gà con",     bg: "#FAD7A0", emoji: "🐥" },
-  { id: "pig",       label: "Heo",        bg: "#F5B7B1", emoji: "🐷" },
-  { id: "mouse",     label: "Chuột",      bg: "#D5D8DC", emoji: "🐭" },
+const COUNT = 12;
+
+export const AVATARS: PresetAvatar[] = Array.from({ length: COUNT }, (_, i) => ({
+  id: `av-${i + 1}`,
+  label: `Ảnh đại diện ${i + 1}`,
+  src: `/avatars/av-${i + 1}.png`,
+}));
+
+// Các id avatar cũ (emoji) từng lưu trong DB — ánh xạ sang ảnh mới cho ổn định.
+const LEGACY_IDS = [
+  "cat", "dog", "bear", "rabbit", "fox", "panda", "koala", "lion", "monkey",
+  "penguin", "owl", "unicorn", "dragon", "octopus", "frog", "tiger", "whale",
+  "chick", "pig", "mouse",
 ];
 
+/** Băm tất định một chuỗi id bất kỳ về 1..COUNT (dùng cho id lạ/cũ). */
+function hashToIndex(id: string): number {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return (h % COUNT) + 1;
+}
+
+/**
+ * Trả về avatar cho một id.
+ * - id mới "av-N" → dùng trực tiếp.
+ * - id cũ (cat, dog, …) hoặc id lạ → ánh xạ tất định sang một av-N.
+ */
 export function getAvatar(id: string): PresetAvatar | undefined {
-  return AVATARS.find((a) => a.id === id);
+  if (!id) return undefined;
+  const direct = AVATARS.find((a) => a.id === id);
+  if (direct) return direct;
+  // id cũ theo danh sách → giữ đúng thứ tự cũ để phân bổ đều
+  const legacyPos = LEGACY_IDS.indexOf(id);
+  const n = legacyPos >= 0 ? (legacyPos % COUNT) + 1 : hashToIndex(id);
+  return AVATARS[n - 1];
 }
 
 export function randomAvatar(): PresetAvatar {
@@ -45,5 +54,18 @@ export function randomAvatar(): PresetAvatar {
 
 /** Chữ cái đầu của tên — fallback khi chưa chọn avatar */
 export function initials(name: string): string {
-  return name.charAt(0).toUpperCase();
+  return (name || "?").trim().charAt(0).toUpperCase() || "?";
+}
+
+// ---- Icon hạng mục chi tiêu (public/categories/{id}.png) ----
+
+const CATEGORY_ICON_IDS = new Set([
+  "an-uong", "ca-phe", "di-lai", "luu-tru", "giai-tri", "mua-sam", "hoa-don",
+  "khac",
+]);
+
+/** Đường dẫn icon minh hoạ cho một hạng mục; hạng mục lạ → "khac". */
+export function categoryIcon(id: string): string {
+  const key = CATEGORY_ICON_IDS.has(id) ? id : "khac";
+  return `/categories/${key}.png`;
 }

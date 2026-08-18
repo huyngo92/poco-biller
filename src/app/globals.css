@@ -11,48 +11,57 @@
 :root {
   color-scheme: light dark;
 
-  /* --- System colors (light) --- */
-  --tint: #007aff; /* systemBlue: icon, viền, nét mảnh */
-  --tint-strong: #0062cc; /* dùng cho chữ và nền đặc, đạt 4.5:1 trên trắng */
-  --tint-wash: #e8f1ff; /* nền tô nhạt */
-  --red: #d70015; /* systemRed đã tối đi cho đủ tương phản chữ */
-  --red-wash: #fdecec;
-  --green: #1c7c3f; /* systemGreen đã tối đi cho đủ tương phản chữ */
-  --green-wash: #e8f6ec;
+  /* =======================================================================
+     Poco — brand ấm/playful. Primary XANH DƯƠNG (lấy từ logo & mockup),
+     coral = màu NỢ, xanh lá = màu ĐƯỢC NHẬN. Nền lavender-trắng, card trắng,
+     bo góc mềm, minh hoạ + mascot tạo cảm giác vui. Màu nợ/nhận giữ hue thiết
+     kế nhưng tối lại đủ tương phản chữ theo WCAG.
+     ======================================================================= */
 
-  /* --- Màu hạng mục cho chart (system colors iOS) ---
-     Mỗi hạng mục gắn cứng một màu trong src/lib/chart.ts. Thứ tự ở đây được
-     chọn sao cho hai màu cạnh nhau trong donut không trùng tông. */
-  --c-orange: #d96500; /* Ăn uống — tối hơn systemOrange để đạt 3:1 trên trắng */
-  --c-brown: #9c6644; /* Cà phê */
-  --c-blue: #007aff; /* Đi lại */
-  --c-indigo: #5145c8; /* Lưu trú */
-  --c-pink: #e0396b; /* Giải trí */
-  --c-purple: #9440d0; /* Mua sắm */
-  --c-teal: #128a8a; /* Hoá đơn cố định */
-  --c-gray: #8e8e93; /* Khác */
+  /* --- Màu thương hiệu --- */
+  --tint: #2f6bf0; /* xanh Poco: icon, viền, nền fill, trạng thái active */
+  --tint-strong: #2a5fe0; /* nút đặc + chữ link, đủ tương phản trên trắng */
+  --tint-wash: #eaf0fe; /* nền tô nhạt xanh */
+  --red: #e0492c; /* coral-đỏ = nợ, đã tối đủ 4.5:1 trên trắng */
+  --red-wash: #ffece6;
+  --green: #1c9a4a; /* xanh lá = được nhận */
+  --green-wash: #e7f6ec;
+  --spark: #f5a623; /* vàng "spark" trong logo — dùng cho ăn mừng/huy hiệu */
+  --spark-wash: #fff3d9;
 
-  /* --- Nền theo kiểu grouped của iOS --- */
-  --bg-grouped: #f2f2f7; /* systemGroupedBackground */
-  --bg-elevated: #ffffff; /* secondarySystemGroupedBackground */
-  --fill-quaternary: rgba(116, 116, 128, 0.08); /* nền nút phụ, track */
-  --fill-tertiary: rgba(116, 116, 128, 0.12);
+  /* --- Màu hạng mục cho chart (bộ warm-playful, khớp icon minh hoạ) ---
+     Mỗi hạng mục gắn cứng một màu trong src/lib/chart.ts. Chọn sao cho hai
+     màu cạnh nhau trong donut không trùng tông. */
+  --c-orange: #ef7a3c; /* Ăn uống */
+  --c-brown: #b0763f; /* Cà phê */
+  --c-blue: #2f6bf0; /* Đi lại */
+  --c-indigo: #5a63d6; /* Lưu trú */
+  --c-pink: #e0518e; /* Giải trí */
+  --c-purple: #9a5cd8; /* Mua sắm */
+  --c-teal: #1a9c8b; /* Hoá đơn cố định */
+  --c-gray: #8b8f9c; /* Khác */
+
+  /* --- Nền: lavender-trắng ấm, card trắng nổi --- */
+  --bg-grouped: #f4f5fb;
+  --bg-elevated: #ffffff;
+  --fill-quaternary: rgba(48, 62, 120, 0.06); /* nền nút phụ, track */
+  --fill-tertiary: rgba(48, 62, 120, 0.1);
 
   /* --- Chữ --- */
-  --label: #000000;
-  --label-secondary: #4b4b52; /* ~secondaryLabel, đủ 4.5:1 */
-  --label-tertiary: #6d6d74; /* nhãn nhỏ, vẫn đạt 4.5:1 */
+  --label: #171922;
+  --label-secondary: #52555f;
+  --label-tertiary: #7c7f8a;
   --label-on-tint: #ffffff;
 
   /* --- Đường kẻ --- */
-  --separator: rgba(60, 60, 67, 0.29);
-  --separator-opaque: #c6c6c8;
+  --separator: rgba(40, 48, 90, 0.12);
+  --separator-opaque: #e5e6f0;
 
-  /* --- Bo góc (iOS dùng continuous corner) --- */
-  --r-sm: 8px;
-  --r-md: 10px;
-  --r-lg: 12px;
-  --r-xl: 16px;
+  /* --- Bo góc mềm (playful) --- */
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 20px;
+  --r-xl: 28px;
   --r-pill: 999px;
 
   /* --- Kích thước icon: thang SF Symbols --- */
@@ -66,12 +75,16 @@
 
   /* --- Chuyển động --- */
   --ease-ios: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1); /* nảy nhẹ cho gamification */
   --dur-fast: 0.18s;
   --dur: 0.28s;
 
-  --shadow-raised: 0 1px 3px rgba(0, 0, 0, 0.06);
-  --shadow-sheet: 0 -1px 24px rgba(0, 0, 0, 0.14);
-  --shadow-segment: 0 1px 3px rgba(0, 0, 0, 0.12);
+  /* Bóng mềm, hơi ngả xanh cho ấm */
+  --shadow-raised: 0 2px 10px rgba(40, 55, 120, 0.06),
+    0 1px 2px rgba(40, 55, 120, 0.04);
+  --shadow-sheet: 0 -1px 30px rgba(30, 40, 90, 0.16);
+  --shadow-segment: 0 1px 3px rgba(40, 55, 120, 0.12);
+  --shadow-fab: 0 6px 18px rgba(47, 107, 240, 0.4);
 
   /* SF Pro trên máy Apple, font hệ thống ở nơi khác — không tải font ngoài */
   --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui,
@@ -99,40 +112,43 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --tint: #0a84ff;
-    --tint-strong: #4da3ff; /* trên nền tối thì bản sáng mới đủ tương phản */
-    --tint-wash: rgba(10, 132, 255, 0.18);
-    --red: #ff6961;
-    --red-wash: rgba(255, 105, 97, 0.16);
+    --tint: #5b8bff; /* xanh Poco sáng lên trên nền tối */
+    --tint-strong: #7aa3ff; /* chữ/nút trên nền tối cần bản sáng hơn */
+    --tint-wash: rgba(91, 139, 255, 0.18);
+    --red: #ff7a5c; /* coral sáng */
+    --red-wash: rgba(255, 122, 92, 0.18);
+    --green: #4fca77;
+    --green-wash: rgba(79, 202, 119, 0.18);
+    --spark: #ffc24d;
+    --spark-wash: rgba(255, 194, 77, 0.18);
 
-    /* Màu hạng mục sáng lên để nổi trên nền #1c1c1e */
-    --c-orange: #ff9f0a;
+    /* Màu hạng mục sáng lên để nổi trên nền tối */
+    --c-orange: #ff9f5a;
     --c-brown: #c79269;
-    --c-blue: #0a84ff;
-    /* Sáng hơn systemIndigo để tách khỏi --c-blue khi hai lát nằm cạnh nhau */
+    --c-blue: #5b8bff;
     --c-indigo: #a79bff;
-    --c-pink: #ff5c8a;
-    --c-purple: #bf5af2;
-    --c-teal: #40c8c8;
-    --c-gray: #98989f;
-    --green: #4cd67b;
-    --green-wash: rgba(76, 214, 123, 0.16);
+    --c-pink: #ff7aad;
+    --c-purple: #c98bf0;
+    --c-teal: #45c8b6;
+    --c-gray: #9a9ea8;
 
-    --bg-grouped: #000000;
-    --bg-elevated: #1c1c1e;
-    --fill-quaternary: rgba(118, 118, 128, 0.18);
-    --fill-tertiary: rgba(118, 118, 128, 0.24);
+    /* Nền nâu-đen ấm thay vì đen thuần */
+    --bg-grouped: #16130f;
+    --bg-elevated: #211d18;
+    --fill-quaternary: rgba(255, 240, 220, 0.06);
+    --fill-tertiary: rgba(255, 240, 220, 0.1);
 
-    --label: #ffffff;
-    --label-secondary: #b9b9bf;
-    --label-tertiary: #98989f;
+    --label: #f7f3ee;
+    --label-secondary: #bdb6ab;
+    --label-tertiary: #948d82;
     --label-on-tint: #ffffff;
 
-    --separator: rgba(84, 84, 88, 0.65);
-    --separator-opaque: #38383a;
+    --separator: rgba(255, 240, 220, 0.14);
+    --separator-opaque: #3a352e;
 
     --shadow-raised: none;
-    --shadow-sheet: 0 -1px 24px rgba(0, 0, 0, 0.6);
+    --shadow-sheet: 0 -1px 30px rgba(0, 0, 0, 0.6);
+    --shadow-fab: 0 6px 18px rgba(0, 0, 0, 0.5);
     /* Nền tối thì bóng đen vô hình — dùng viền sáng mảnh để tách lớp */
     --shadow-segment: 0 0 0 0.5px rgba(255, 255, 255, 0.16);
   }
@@ -246,17 +262,15 @@ svg {
   letter-spacing: -0.02em;
 }
 
-/* Dùng đúng icon.svg (nguồn duy nhất của favicon/app icon) làm ảnh nền —
-   trước đây vẽ gradient riêng nên logo trên nav bar không giống favicon
-   thật (thiếu hình vòng tròn chia đôi). Next serve app/icon.svg tại
-   route /icon.svg nên gọi trực tiếp, không cần copy file. */
+/* Logo Poco mới (public/logo.png) làm mark trên nav bar. */
 .brand-mark {
   display: inline-block;
-  width: 22px;
-  height: 22px;
-  border-radius: 6px;
-  background-image: url("/icon.svg");
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background-image: url("/logo.png");
   background-size: cover;
+  background-position: center;
   margin-right: 2px;
   flex: 0 0 auto;
 }
@@ -352,6 +366,81 @@ svg {
 
 .credit {
   color: var(--green);
+}
+
+/* Thẻ số dư 2 chiều (cần trả / sẽ nhận) trên Tổng quan — viền trên dạng sóng bo tròn */
+.card-wavy {
+  position: relative;
+  overflow: visible;
+}
+
+.card-wavy::before {
+  content: "";
+  position: absolute;
+  top: -8px;
+  left: 0;
+  right: 0;
+  height: 16px;
+  background: var(--bg-elevated);
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='16' viewBox='0 0 24 16'%3E%3Cpath d='M0 16 Q6 0 12 16 Q18 0 24 16 Z'/%3E%3C/svg%3E");
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='16' viewBox='0 0 24 16'%3E%3Cpath d='M0 16 Q6 0 12 16 Q18 0 24 16 Z'/%3E%3C/svg%3E");
+  mask-repeat: repeat-x;
+  -webkit-mask-repeat: repeat-x;
+  mask-size: 24px 16px;
+  -webkit-mask-size: 24px 16px;
+}
+
+.owe-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.owe-row + .owe-row {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--rule);
+}
+
+.owe-ic {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+.owe-ic-warn {
+  background: var(--red-wash);
+  color: var(--red);
+}
+
+.owe-ic-ok {
+  background: var(--green-wash);
+  color: var(--green);
+}
+
+.btn-pill {
+  border-radius: var(--r-pill);
+  padding-left: 20px;
+  padding-right: 20px;
+}
+
+/* Dải avatar người tham gia xếp mép — dùng ở "Bill gần đây" (Tổng quan) */
+.avatar-stack {
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.avatar-stack > span {
+  border: 2px solid var(--bg-elevated);
+  box-sizing: content-box;
+}
+
+.avatar-stack > span + span {
+  margin-left: -10px;
 }
 
 h1 {
@@ -633,6 +722,14 @@ h2 {
   box-shadow: var(--shadow-segment);
 }
 
+/* Biến thể đậm hơn — chỉ dùng ở trang Bill, không đổi .segment dùng chung
+   với Dashboard */
+.segmented-bold .segment[aria-pressed="true"] {
+  background: var(--tint-strong);
+  color: var(--label-on-tint);
+  box-shadow: none;
+}
+
 /* Máy rất hẹp thì chỉ còn icon. Nhãn vẫn ở lại trong DOM cho screen reader
    nên không được dùng display:none — nút sẽ mất tên gọi. */
 @media (max-width: 380px) {
@@ -693,7 +790,8 @@ h2 {
 
 /* Đường phân cách thụt vào 16px như list của iOS, không kéo hết chiều ngang.
    Dùng selector con cháu vì .entry có nơi là <button>, có nơi là <div>. */
-.ledger > li + li .entry::before {
+.ledger > li + li .entry::before,
+.ledger > li + li .list-row::before {
   content: "";
   position: absolute;
   top: 0;
@@ -735,6 +833,12 @@ h2 {
 .entry-chevron {
   color: var(--label-tertiary);
   opacity: 0.6;
+}
+
+/* Dòng bill rộng rãi hơn ở trang Bill (khác dòng rút gọn ở Dashboard) */
+.entry.entry-roomy {
+  padding: 14px 16px;
+  gap: 14px;
 }
 
 .date-rail {
@@ -890,7 +994,8 @@ h2 {
   max-width: 560px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: 1fr 1fr auto 1fr 1fr;
+  align-items: center;
 }
 
 /* iOS không dùng gạch chân cho tab đang chọn — chỉ đổi màu và tô đầy icon */
@@ -918,6 +1023,36 @@ h2 {
 .tab svg {
   width: var(--icon-tab);
   height: var(--icon-tab);
+  vertical-align: baseline;
+}
+
+/* Nút "Thêm bill" nổi ở giữa tab bar — hình tròn coral-xanh, nhô lên */
+.tab-fab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: center;
+  width: 56px;
+  height: 56px;
+  margin-top: -18px;
+  border-radius: var(--r-pill);
+  background: var(--tint);
+  color: #fff;
+  box-shadow: var(--shadow-fab);
+  text-decoration: none;
+  transition: transform var(--dur-fast) var(--ease-spring),
+    background var(--dur-fast) var(--ease-ios);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tab-fab:active {
+  transform: scale(0.92);
+  background: var(--tint-strong);
+}
+
+.tab-fab svg {
+  width: 28px;
+  height: 28px;
   vertical-align: baseline;
 }
 
@@ -1251,11 +1386,11 @@ input[type="checkbox"] {
 @keyframes pulse {
   0%, 100% {
     opacity: 1;
-    box-shadow: 0 0 0 0 rgba(0, 122, 255, 0.4);
+    box-shadow: 0 0 0 0 rgba(47, 107, 240, 0.4);
   }
   50% {
     opacity: 0.7;
-    box-shadow: 0 0 0 8px rgba(0, 122, 255, 0);
+    box-shadow: 0 0 0 8px rgba(47, 107, 240, 0);
   }
 }
 
@@ -1774,4 +1909,667 @@ input[type="checkbox"] {
 
 .avatar-option:active {
   transform: scale(0.92);
+}
+
+/* ============================================================
+   GAMIFICATION — tiến độ nhóm, huy hiệu, dòng tiền, ăn mừng
+   Suy hoàn toàn từ dữ liệu có sẵn; cộng tác, không chấm điểm cá nhân.
+   ============================================================ */
+
+/* ---------- Icon hạng mục (sprite minh hoạ) ---------- */
+.cat-ic {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-sm);
+  background: var(--fill-quaternary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.cat-ic img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  display: block;
+}
+
+.cat-ic-lg {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-md);
+}
+
+.cat-ic-lg img {
+  width: 32px;
+  height: 32px;
+}
+
+/* Icon hạng mục dạng viên tròn — chỉ dùng ở thẻ bill rộng của trang Bill,
+   màu nền set qua inline style theo từng hạng mục (categoryColor) */
+.cat-ic.cat-ic-circle {
+  border-radius: 50%;
+}
+
+/* ---------- Mascot ---------- */
+.mascot {
+  flex: 0 0 auto;
+}
+
+/* ---------- Tiến độ nhóm (GroupProgress) ---------- */
+.gp {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gp-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gp-title {
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.gp-count {
+  font-weight: 600;
+  color: var(--tint-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.gp-sub {
+  margin: -6px 0 0;
+}
+
+.gp-track {
+  height: 8px;
+  border-radius: var(--r-pill);
+  background: var(--fill-quaternary);
+  overflow: hidden;
+}
+
+.gp-track-fill {
+  height: 100%;
+  border-radius: var(--r-pill);
+  background: linear-gradient(90deg, var(--tint), var(--tint-strong));
+  transition: width var(--dur-med, 0.35s) var(--ease-spring);
+}
+
+.gp-complete .gp-track-fill {
+  background: linear-gradient(90deg, var(--green), var(--green));
+}
+
+.gp-steps {
+  list-style: none;
+  margin: 2px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gp-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--label-tertiary);
+}
+
+.gp-step.done {
+  color: var(--label);
+}
+
+.gp-dot {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--fill-tertiary);
+  background: var(--bg-elevated);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  transition: background var(--dur-fast) var(--ease-ios),
+    border-color var(--dur-fast) var(--ease-ios);
+}
+
+.gp-step.done .gp-dot {
+  background: var(--green);
+  border-color: var(--green);
+}
+
+.gp-step-label {
+  font-size: 15px;
+}
+
+.gp-hint {
+  margin: 2px 0 0;
+}
+
+/* ---------- Huy hiệu (Badges) ---------- */
+.badges-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.badge {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 12px;
+  border-radius: var(--r-md);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-raised);
+  opacity: 0.55;
+  filter: grayscale(0.7);
+  transition: opacity var(--dur-fast) var(--ease-ios),
+    filter var(--dur-fast) var(--ease-ios),
+    transform var(--dur-fast) var(--ease-spring);
+}
+
+.badge.earned {
+  opacity: 1;
+  filter: none;
+}
+
+.badge.earned:active {
+  transform: scale(0.97);
+}
+
+.badge-ic {
+  font-size: 26px;
+  line-height: 1;
+}
+
+.badge-name {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.badge-why {
+  margin: 0;
+  line-height: 1.35;
+}
+
+/* ---------- Sơ đồ dòng tiền (SplitFlow) ---------- */
+.flow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px;
+  border-radius: var(--r-md);
+  background: var(--tint-wash);
+}
+
+.flow-payer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+}
+
+.flow-payer-text {
+  font-size: 14px;
+  color: var(--label-secondary);
+}
+
+.flow-total {
+  color: var(--tint-strong);
+  font-weight: 600;
+}
+
+.flow-line {
+  position: relative;
+  width: 2px;
+  height: 26px;
+  background: var(--tint);
+  opacity: 0.4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flow-line-label {
+  position: absolute;
+  left: 10px;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--label-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+.flow-people {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.flow-person {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  width: 68px;
+}
+
+.flow-person-name {
+  font-size: 12px;
+  color: var(--label-secondary);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flow-amount {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--label);
+}
+
+/* ---------- Thẻ hoàn tất (Celebration) ---------- */
+.celebrate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+}
+
+.celebrate-title {
+  margin: 4px 0 0;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.celebrate-stats {
+  margin: 0;
+  color: var(--label-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.celebrate-actions {
+  width: 100%;
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ---------- Năng lượng nhóm (chip trạng thái) ---------- */
+.energy-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: var(--r-pill);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.energy-chip::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.energy-starting {
+  color: var(--label-secondary);
+  background: var(--fill-quaternary);
+}
+
+.energy-coordinating {
+  color: var(--tint-strong);
+  background: var(--tint-wash);
+}
+
+.energy-flowing {
+  color: #b5730a;
+  background: var(--spark-wash);
+}
+
+.energy-done {
+  color: var(--green);
+  background: var(--green-wash);
+}
+
+/* ---------- Thẻ kết quả sau khi lưu bill ---------- */
+.result-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+}
+
+/* ---------- Trang đăng nhập ---------- */
+.auth-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 4px;
+  margin-bottom: 26px;
+}
+
+/* ---------- Xem trước lời nhắc (ReminderToneSheet) ---------- */
+.tone-preview {
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  background: var(--fill-quaternary);
+  color: var(--label);
+  font-size: 15px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+/* ============================================================
+   MÀN "THÊM BILL" MỚI — chooser 3 thẻ, wizard 3 bước, camera
+   ============================================================ */
+
+/* ---------- Chooser: 3 thẻ lớn Chụp/AI/Nhập tay ---------- */
+.chooser-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 16px;
+  background: var(--bg-elevated);
+  border: none;
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-raised);
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  transition: transform var(--dur-fast) var(--ease-ios),
+    background var(--dur-fast) var(--ease-ios);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.chooser-card:active {
+  transform: scale(0.98);
+  background: var(--fill-quaternary);
+}
+
+.chooser-card-icon {
+  flex: 0 0 auto;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--r-md);
+  background: var(--tint-wash);
+  color: var(--tint-strong);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chooser-card-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chooser-card-title {
+  font-weight: 590;
+  font-size: 16px;
+}
+
+/* ---------- Thanh chỉ báo bước (wizard) ---------- */
+.step-indicator {
+  display: flex;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.step-indicator-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.step-indicator-dot {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid var(--fill-tertiary);
+  background: var(--bg-elevated);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--label-tertiary);
+  transition: background var(--dur-fast) var(--ease-ios),
+    border-color var(--dur-fast) var(--ease-ios),
+    color var(--dur-fast) var(--ease-ios);
+}
+
+.step-indicator-item.active .step-indicator-dot {
+  border-color: var(--tint);
+  color: var(--tint-strong);
+}
+
+.step-indicator-item.done .step-indicator-dot {
+  background: var(--tint);
+  border-color: var(--tint);
+  color: #fff;
+}
+
+.step-indicator-label {
+  font-size: 11px;
+  color: var(--label-tertiary);
+  white-space: nowrap;
+}
+
+.step-indicator-item.active .step-indicator-label,
+.step-indicator-item.done .step-indicator-label {
+  color: var(--label);
+  font-weight: 500;
+}
+
+.step-indicator-line {
+  flex: 1 1 auto;
+  height: 2px;
+  margin: 0 4px;
+  margin-bottom: 18px;
+  background: var(--fill-tertiary);
+  border-radius: var(--r-pill);
+}
+
+.step-indicator-item.done ~ .step-indicator-line,
+.step-indicator-line.done {
+  background: var(--tint);
+}
+
+/* ---------- Hàng list dạng chevron (Cá nhân / Thành viên nhóm) ---------- */
+.list-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  min-height: var(--hit);
+  width: 100%;
+  background: none;
+  border: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-ios);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.list-row:hover {
+  background: var(--fill-quaternary);
+}
+
+.list-row:active {
+  background: var(--fill-tertiary);
+}
+
+.list-row-icon {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--r-sm);
+  background: var(--tint-wash);
+  color: var(--tint-strong);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.list-row-icon.danger {
+  background: var(--red-wash);
+  color: var(--red);
+}
+
+.list-row-main {
+  flex: 1;
+  min-width: 0;
+  font-weight: 500;
+}
+
+.list-row-value {
+  flex: 0 0 auto;
+  color: var(--label-tertiary);
+  font-size: 14px;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- Camera viewfinder (quét hoá đơn) ---------- */
+.camera-view {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  background: #000;
+}
+
+.camera-view video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.camera-topbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  z-index: 2;
+}
+
+.camera-topbar-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.4);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.camera-frame {
+  position: absolute;
+  inset: 8% 6%;
+  z-index: 1;
+}
+
+.camera-corner {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border: 3px solid #fff;
+}
+
+.camera-corner.tl {
+  top: 0;
+  left: 0;
+  border-right: none;
+  border-bottom: none;
+  border-radius: 6px 0 0 0;
+}
+
+.camera-corner.tr {
+  top: 0;
+  right: 0;
+  border-left: none;
+  border-bottom: none;
+  border-radius: 0 6px 0 0;
+}
+
+.camera-corner.bl {
+  bottom: 0;
+  left: 0;
+  border-right: none;
+  border-top: none;
+  border-radius: 0 0 0 6px;
+}
+
+.camera-corner.br {
+  bottom: 0;
+  right: 0;
+  border-left: none;
+  border-top: none;
+  border-radius: 0 0 6px 0;
+}
+
+.camera-bottombar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 0;
+  z-index: 2;
+}
+
+.camera-shutter {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  border: 4px solid #fff;
+  background: rgba(255, 255, 255, 0.25);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.camera-shutter:active {
+  background: rgba(255, 255, 255, 0.45);
 }

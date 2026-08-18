@@ -198,10 +198,12 @@ export function createBill(input: BillInput, createdBy: number): number {
 export function deleteBill(billId: number, userId: number): void {
   const db = getDb();
   const bill = db
-    .prepare("SELECT group_id AS groupId FROM bills WHERE id = ?")
-    .get(billId) as { groupId: number } | undefined;
+    .prepare("SELECT group_id AS groupId, created_by AS createdBy FROM bills WHERE id = ?")
+    .get(billId) as { groupId: number; createdBy: number } | undefined;
   if (!bill) throw new HttpError(404, "Không tìm thấy bill.");
   assertMember(bill.groupId, userId);
+  if (bill.createdBy !== userId)
+    throw new HttpError(403, "Chỉ người đã nhập bill này mới được xoá.");
   db.prepare("DELETE FROM bills WHERE id = ?").run(billId);
 }
 
@@ -211,8 +213,11 @@ export function listBills(groupId: number, from: string, to: string): Bill[] {
     .prepare(
       `SELECT b.id, b.group_id AS groupId, b.title, b.category, b.total,
               b.paid_by AS paidBy, u.name AS paidByName, b.spent_on AS spentOn,
-              b.note, b.split_mode AS splitMode, b.source
-         FROM bills b JOIN users u ON u.id = b.paid_by
+              b.note, b.split_mode AS splitMode, b.source,
+              b.created_by AS createdBy, cu.name AS createdByName
+         FROM bills b
+         JOIN users u ON u.id = b.paid_by
+         JOIN users cu ON cu.id = b.created_by
         WHERE b.group_id = ? AND b.spent_on BETWEEN ? AND ?
         ORDER BY b.spent_on DESC, b.id DESC`
     )

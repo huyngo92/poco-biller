@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { apiJson, rememberGroupId, resolveGroup } from "@/lib/client";
 import { formatVnd } from "@/lib/money";
 import type {
@@ -11,24 +12,82 @@ import type {
   SessionUser,
 } from "@/lib/types";
 import GroupPicker from "@/components/GroupPicker";
+import Mascot from "@/components/Mascot";
+import CameraCapture from "@/components/CameraCapture";
 import BillForm, { emptyDraft, type BillDraft } from "@/components/BillForm";
 import {
+  IconAdd,
   IconAlert,
+  IconArrowRight,
+  IconBack,
   IconCamera,
-  IconChat,
-  IconOk,
+  IconChevron,
+  IconMic,
   IconPen,
+  IconSend,
+  IconSparkles,
   IconSpinner,
   ICON_SIZE,
 } from "@/components/Icons";
 
+/** Web Speech API chưa có type sẵn trong lib.dom.d.ts — khai báo tối thiểu phần dùng tới. */
+type SpeechRecognitionResultLike = { transcript: string };
+type SpeechRecognitionEventLike = {
+  results: ArrayLike<ArrayLike<SpeechRecognitionResultLike>>;
+};
+type SpeechRecognitionLike = {
+  lang: string;
+  interimResults: boolean;
+  onresult: ((e: SpeechRecognitionEventLike) => void) | null;
+  onend: (() => void) | null;
+  onerror: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+
 type Mode = "photo" | "chat" | "manual";
 
-const MODES: { id: Mode; label: string; Icon: typeof IconCamera }[] = [
-  { id: "photo", label: "Chụp hoá đơn", Icon: IconCamera },
-  { id: "chat", label: "Gõ một câu", Icon: IconChat },
-  { id: "manual", label: "Nhập tay", Icon: IconPen },
+const MODES: {
+  id: Mode;
+  label: string;
+  desc: string;
+  Icon: typeof IconCamera;
+}[] = [
+  {
+    id: "photo",
+    label: "Chụp hoá đơn",
+    desc: "Camera đọc tổng tiền và món tự động",
+    Icon: IconCamera,
+  },
+  {
+    id: "chat",
+    label: "Nhập nhanh AI",
+    desc: "Gõ một câu, AI tự điền thông tin",
+    Icon: IconSparkles,
+  },
+  {
+    id: "manual",
+    label: "Nhập tay",
+    desc: "Tự điền từng trường thông tin",
+    Icon: IconPen,
+  },
 ];
+
+const CHAT_SUGGESTIONS = [
+  "Ăn trưa 450k chia đều 3 người",
+  "Cà phê 180k, Lan trả, mình với Lan chia đều",
+  "Đổ xăng 200k mình ứng",
+];
+
+/** SpeechRecognition — API trình duyệt, không phải dependency. Ẩn mic nếu không hỗ trợ. */
+function getSpeechRecognition(): (new () => SpeechRecognitionLike) | null {
+  if (typeof window === "undefined") return null;
+  const w = window as unknown as {
+    SpeechRecognition?: new () => SpeechRecognitionLike;
+    webkitSpeechRecognition?: new () => SpeechRecognitionLike;
+  };
+  return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
+}
 
 export default function AddBill({
   user,
@@ -39,21 +98,23 @@ export default function AddBill({
 }) {
   const [group, setGroup] = useState<Group | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
-  const [mode, setMode] = useState<Mode>("photo");
+  const [mode, setMode] = useState<Mode | null>(null);
   const [draft, setDraft] = useState<BillDraft | null>(null);
   const [saved, setSaved] = useState("");
   const [error, setError] = useState("");
 
   // Chụp hoá đơn
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [previewUrl, setPreviewUrl] = useState("");
   const [ocrBusy, setOcrBusy] = useState(false);
   const [ocrItems, setOcrItems] = useState<OcrResult["items"]>([]);
+  const [ocrDone, setOcrDone] = useState(false);
 
-  // Chat
+  // Nhập nhanh AI
   const [chatInput, setChatInput] = useState("");
   const [chatBusy, setChatBusy] = useState(false);
-  const [bubbles, setBubbles] = useState<{ who: "me" | "ai"; text: string }[]>([]);
+  const [chatExplanation, setChatExplanation] = useState("");
+  const [chatDone, setChatDone] = useState(false);
+  const [listening, setListening] = useState(false);
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
 
   useEffect(() => setGroup(resolveGroup(groups)), [groups]);
 
@@ -74,21 +135,12 @@ export default function AddBill({
     void loadMembers();
   }, [loadMembers]);
 
-  useEffect(() => {
-    return () => {
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-    };
-  }, [previewUrl]);
-
   async function runOcr(file: File) {
     if (!group || !draft) return;
     setError("");
     setSaved("");
     setOcrBusy(true);
     setOcrItems([]);
-
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    setPreviewUrl(URL.createObjectURL(file));
 
     try {
       const form = new FormData();
@@ -108,6 +160,7 @@ export default function AddBill({
         spentOn: r.spentOn,
         note: r.note,
       });
+      setOcrDone(true);
       if (r.total === 0)
         setError(
           "Mình đọc được ảnh nhưng chưa thấy tổng tiền. Bạn nhập tổng tiền bên dưới giúp."
@@ -122,10 +175,8 @@ export default function AddBill({
   async function runChat() {
     if (!group || !draft || !chatInput.trim()) return;
     const message = chatInput.trim();
-    setChatInput("");
     setError("");
     setSaved("");
-    setBubbles((b) => [...b, { who: "me", text: message }]);
     setChatBusy(true);
 
     try {
@@ -163,46 +214,67 @@ export default function AddBill({
         weights,
         exact,
       });
-
-      const lines = d.shares
-        .map((s) => `${s.name}: ${formatVnd(s.amount)}`)
-        .join("\n");
-      setBubbles((b) => [
-        ...b,
-        {
-          who: "ai",
-          text: `${d.title} — ${formatVnd(d.total)}\n${d.explanation}\n\n${lines}\n\nKiểm tra lại bên dưới rồi bấm Lưu bill nhé.`,
-        },
-      ]);
+      setChatExplanation(d.explanation);
+      setChatDone(true);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Không hiểu được câu mô tả.";
-      setBubbles((b) => [...b, { who: "ai", text: msg }]);
+      setError(e instanceof Error ? e.message : "Không hiểu được câu mô tả.");
     } finally {
       setChatBusy(false);
     }
   }
 
+  function toggleMic() {
+    const SpeechRecognitionCtor = getSpeechRecognition();
+    if (!SpeechRecognitionCtor) return;
+
+    if (listening) {
+      recognitionRef.current?.stop();
+      return;
+    }
+
+    const recognition = new SpeechRecognitionCtor();
+    recognition.lang = "vi-VN";
+    recognition.interimResults = false;
+    recognition.onresult = (e: SpeechRecognitionEventLike) => {
+      const text = e.results[0]?.[0]?.transcript ?? "";
+      if (text) setChatInput((prev) => (prev ? `${prev} ${text}` : text));
+    };
+    recognition.onend = () => setListening(false);
+    recognition.onerror = () => setListening(false);
+    recognitionRef.current = recognition;
+    recognition.start();
+    setListening(true);
+  }
+
   function resetToStart(msg: string) {
     setSaved(msg);
     setError("");
-    setMode("photo");
+    setMode(null);
     setDraft(emptyDraft(members, user.id));
-    setBubbles([]);
     setOcrItems([]);
+    setOcrDone(false);
     setChatInput("");
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
-      setPreviewUrl("");
-    }
-    if (fileRef.current) fileRef.current.value = "";
+    setChatExplanation("");
+    setChatDone(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function backToChooser() {
+    setMode(null);
+    setError("");
+    setOcrItems([]);
+    setOcrDone(false);
+    setChatExplanation("");
+    setChatDone(false);
+    setChatInput("");
+    setDraft(emptyDraft(members, user.id));
   }
 
   if (!group || !draft) {
     return (
       <div className="shell">
         <header className="topbar">
-          <span className="brand-mark" aria-hidden="true" />
+          <IconAdd size={ICON_SIZE.tab} style={{ color: "var(--tint-strong)" }} />
           <span className="brand">Thêm bill</span>
         </header>
         <div className="card card-pad muted">Đang tải…</div>
@@ -210,15 +282,23 @@ export default function AddBill({
     );
   }
 
-  // Manual thì form nhập chính là "thông tin bill" nên luôn hiện.
-  // Photo/chat thì phải có nội dung do OCR/AI đọc ra rồi mới hiện phần review.
-  const hasContent =
-    mode === "manual" || draft.title.trim().length > 0 || draft.totalText.trim().length > 0;
+  const showWizard =
+    mode === "manual" || (mode === "photo" && ocrDone) || (mode === "chat" && chatDone);
 
   return (
     <div className="shell">
       <header className="topbar">
-        <span className="brand-mark" aria-hidden="true" />
+        {mode && (
+          <button
+            type="button"
+            className="btn btn-ghost btn-icon btn-sm"
+            onClick={backToChooser}
+            aria-label="Quay lại chọn cách thêm bill"
+          >
+            <IconBack size={ICON_SIZE.md} />
+          </button>
+        )}
+        <IconAdd size={ICON_SIZE.tab} style={{ color: "var(--tint-strong)" }} />
         <span className="brand">Thêm bill</span>
         <span className="spacer" />
         <GroupPicker
@@ -231,120 +311,76 @@ export default function AddBill({
         />
       </header>
 
-      {/* Segmented control kiểu iOS: ba cách nhập loại trừ nhau */}
-      <div
-        className="segmented"
-        role="group"
-        aria-label="Cách nhập bill"
-        style={{ marginBottom: 16 }}
-      >
-        {MODES.map(({ id, label, Icon }) => (
-          <button
-            key={id}
-            type="button"
-            className="segment"
-            aria-pressed={mode === id}
-            onClick={() => {
-              setMode(id);
-              setError("");
-              setSaved("");
-            }}
-          >
-            <Icon size={ICON_SIZE.sm} filled={mode === id} />
-            <span>{label}</span>
-          </button>
-        ))}
-      </div>
-
       {saved && (
-        <p className="notice" style={{ marginBottom: 14 }} role="status">
-          <IconOk size={ICON_SIZE.sm} />
-          <span>{saved}</span>
-        </p>
+        <div className="card card-pad result-card" role="status" style={{ marginBottom: 16 }}>
+          <Mascot name="send" size={96} />
+          <p className="empty-title" style={{ margin: 0 }}>Bill đã được thêm</p>
+          <p className="muted" style={{ margin: 0 }}>{saved}</p>
+          <div className="row" style={{ gap: 8, marginTop: 4 }}>
+            <Link href="/nhac-no" className="btn btn-primary">
+              Xem công nợ <IconArrowRight size={ICON_SIZE.sm} />
+            </Link>
+            <button type="button" className="btn" onClick={() => setSaved("")}>
+              Thêm bill khác
+            </button>
+          </div>
+        </div>
       )}
 
-      {mode === "photo" && (
-        <section className="section">
-          <div className="card card-pad stack">
-            <p className="muted" style={{ margin: 0 }}>
-              Chụp hoặc chọn ảnh hoá đơn, AI sẽ đọc tổng tiền và danh sách món.
-            </p>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              style={{ display: "none" }}
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) void runOcr(f);
-              }}
-            />
+      {!saved && !mode && (
+        <div className="stack" style={{ gap: 12 }}>
+          {MODES.map(({ id, label, desc, Icon }) => (
             <button
+              key={id}
               type="button"
-              className="btn btn-primary btn-block"
-              onClick={() => fileRef.current?.click()}
-              disabled={ocrBusy}
+              className="chooser-card"
+              onClick={() => setMode(id)}
             >
-              {ocrBusy ? (
-                <>
-                  <IconSpinner size={ICON_SIZE.md} /> Đang đọc hoá đơn
-                </>
-              ) : (
-                <>
-                  <IconCamera size={ICON_SIZE.md} />
-                  {previewUrl ? "Chọn ảnh khác" : "Chọn ảnh hoá đơn"}
-                </>
-              )}
+              <span className="chooser-card-icon" aria-hidden="true">
+                <Icon size={ICON_SIZE.lg} />
+              </span>
+              <span className="chooser-card-main">
+                <span className="chooser-card-title">{label}</span>
+                <span className="faint">{desc}</span>
+              </span>
+              <IconChevron size={ICON_SIZE.sm} className="entry-chevron" />
             </button>
+          ))}
+        </div>
+      )}
 
-            {previewUrl && (
-              <img src={previewUrl} alt="Ảnh hoá đơn đã chọn" className="thumb" />
-            )}
-
-            {ocrItems.length > 0 && (
-              <div>
-                <p className="section-title" style={{ marginBottom: 6 }}>
-                  Món đọc được từ hoá đơn
-                </p>
-                {ocrItems.map((it, i) => (
-                  <div className="split-row" key={i} style={{ gridTemplateColumns: "1fr auto" }}>
-                    <span className="muted">
-                      {it.quantity > 1 ? `${it.quantity}× ` : ""}
-                      {it.name}
-                    </span>
-                    <span className="num">{formatVnd(it.price)}</span>
-                  </div>
-                ))}
-                <p className="hint" style={{ marginTop: 8 }}>
-                  Danh sách món chỉ để bạn đối chiếu. Số tiền chia lấy theo tổng bill.
-                </p>
-              </div>
-            )}
-          </div>
+      {!saved && mode === "photo" && !ocrDone && (
+        <section className="section">
+          {ocrBusy ? (
+            <div className="card card-pad empty">
+              <IconSpinner size={ICON_SIZE.lg} />
+              <p className="muted" style={{ marginTop: 8 }}>Đang đọc hoá đơn…</p>
+            </div>
+          ) : (
+            <CameraCapture onCapture={runOcr} onCancel={backToChooser} />
+          )}
         </section>
       )}
 
-      {mode === "chat" && (
+      {!saved && mode === "chat" && !chatDone && (
         <section className="section">
-          <div className="card card-pad">
-            {bubbles.length === 0 ? (
-              <div className="empty" style={{ padding: "18px 4px" }}>
-                <p className="empty-title">Mô tả bằng một câu</p>
-                <p className="muted" style={{ margin: 0 }}>
-                  Ví dụ: “Tối qua lẩu 1tr2, mình ứng, chia đều cho Huy, Lan và
-                  Trung” hoặc “Cà phê 180k, Lan trả, mình với Lan chia đều”.
-                </p>
-              </div>
-            ) : (
-              <div className="bubbles">
-                {bubbles.map((b, i) => (
-                  <div key={i} className={`bubble ${b.who}`}>
-                    {b.text}
-                  </div>
-                ))}
-              </div>
-            )}
+          <div className="card card-pad stack">
+            <p className="muted" style={{ margin: 0 }}>
+              Mô tả bằng một câu, AI tự điền tên bill, số tiền và cách chia.
+            </p>
+
+            <div className="chips">
+              {CHAT_SUGGESTIONS.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  className="chip"
+                  onClick={() => setChatInput(s)}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
 
             <div className="row" style={{ alignItems: "flex-end" }}>
               <textarea
@@ -361,13 +397,25 @@ export default function AddBill({
                 placeholder="Ăn trưa 450k chia đều 3 người"
                 aria-label="Mô tả khoản chi"
               />
+              {getSpeechRecognition() && (
+                <button
+                  type="button"
+                  className="btn btn-icon"
+                  aria-pressed={listening}
+                  aria-label="Nhập bằng giọng nói"
+                  onClick={toggleMic}
+                >
+                  <IconMic size={ICON_SIZE.md} />
+                </button>
+              )}
               <button
                 type="button"
-                className="btn btn-primary"
+                className="btn btn-primary btn-icon"
                 onClick={() => void runChat()}
                 disabled={chatBusy || !chatInput.trim()}
+                aria-label="Gửi cho AI"
               >
-                {chatBusy ? <IconSpinner size={ICON_SIZE.md} /> : "Gửi"}
+                {chatBusy ? <IconSpinner size={ICON_SIZE.md} /> : <IconSend size={ICON_SIZE.md} />}
               </button>
             </div>
           </div>
@@ -381,13 +429,37 @@ export default function AddBill({
         </p>
       )}
 
-      {hasContent && (
+      {!saved && showWizard && (
         <>
-          <div className="section-head">
-            <h2 className="section-title">
-              {mode === "manual" ? "Thông tin bill" : "Kiểm tra rồi lưu"}
-            </h2>
-          </div>
+          {mode === "photo" && ocrItems.length > 0 && (
+            <div className="card card-pad" style={{ marginBottom: 16 }}>
+              <p className="section-title" style={{ marginBottom: 6 }}>
+                Món đọc được từ hoá đơn
+              </p>
+              {ocrItems.map((it, i) => (
+                <div className="split-row" key={i} style={{ gridTemplateColumns: "1fr auto" }}>
+                  <span className="muted">
+                    {it.quantity > 1 ? `${it.quantity}× ` : ""}
+                    {it.name}
+                  </span>
+                  <span className="num">{formatVnd(it.price)}</span>
+                </div>
+              ))}
+              <p className="hint" style={{ marginTop: 8 }}>
+                Danh sách món chỉ để bạn đối chiếu. Số tiền chia lấy theo tổng bill.
+              </p>
+            </div>
+          )}
+
+          {mode === "chat" && chatExplanation && (
+            <div className="card card-pad" style={{ marginBottom: 16 }}>
+              <p className="row" style={{ margin: 0, gap: 6 }}>
+                <IconSparkles size={ICON_SIZE.sm} className="entry-chevron" />
+                <strong>AI đã hiểu</strong>
+              </p>
+              <p className="muted" style={{ margin: "4px 0 0" }}>{chatExplanation}</p>
+            </div>
+          )}
 
           <BillForm
             groupId={group.id}

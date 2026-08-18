@@ -1391,4 +1391,306 @@ check("* * * * * khớp mọi thời điểm — mốc so sánh cho các luật 
   assert.ok(cronMatches(f, new Date(2026, 11, 31, 23, 59)));
 });
 
+/* ---------- bản sao src/lib/gamification.ts (gamification cộng tác) ---------- */
+// Suy hoàn toàn từ dữ liệu có sẵn. suggestDirectTransfers là bản sao 1:1 của
+// src/lib/balance.ts (khác suggestTransfers ở trên — hàm này tính trực tiếp).
+
+function suggestDirectTransfers(members, bills, settlements, minAmount = 1000) {
+  const debt = new Map();
+  const addDebt = (fromId, toId, amount) => {
+    if (fromId === toId) return;
+    if (!debt.has(fromId)) debt.set(fromId, new Map());
+    const inner = debt.get(fromId);
+    inner.set(toId, (inner.get(toId) ?? 0) + amount);
+  };
+  for (const b of bills) {
+    for (const s of b.shares) {
+      if (s.userId !== b.paidBy) addDebt(s.userId, b.paidBy, s.amount);
+    }
+  }
+  for (const s of settlements) addDebt(s.fromUserId, s.toUserId, -s.amount);
+
+  const memberMap = new Map(members.map((m) => [m.userId, m.name]));
+  const out = [];
+  const visited = new Set();
+  for (const [fromId, inner] of debt) {
+    for (const [toId] of inner) {
+      const key = [fromId, toId].sort().join("-");
+      if (visited.has(key)) continue;
+      visited.add(key);
+      const aOwesB = debt.get(fromId)?.get(toId) ?? 0;
+      const bOwesA = debt.get(toId)?.get(fromId) ?? 0;
+      const net = Math.round(aOwesB - bOwesA);
+      if (net >= minAmount) {
+        out.push({ fromUserId: fromId, toUserId: toId, amount: net });
+      } else if (net <= -minAmount) {
+        out.push({ fromUserId: toId, toUserId: fromId, amount: -net });
+      }
+    }
+  }
+  return out.sort((a, b) => b.amount - a.amount);
+}
+
+function isFilledBill(b) {
+  return (
+    !!b.title && b.title.trim().length > 0 &&
+    b.total > 0 &&
+    !!b.paidBy &&
+    !!b.spentOn && b.spentOn.trim().length > 0
+  );
+}
+function isClearBill(b) {
+  return isFilledBill(b) && !!b.category && b.category.trim().length > 0;
+}
+function isSplitBill(b) {
+  if (!b.shares || b.shares.length === 0) return false;
+  const sum = b.shares.reduce((acc, s) => acc + s.amount, 0);
+  const tolerance = Math.max(1, b.shares.length);
+  return Math.abs(sum - b.total) <= tolerance;
+}
+function participantIds(bills) {
+  const ids = new Set();
+  for (const b of bills) for (const s of b.shares) ids.add(s.userId);
+  return ids;
+}
+function everyoneParticipates(members, bills) {
+  if (members.length === 0 || bills.length === 0) return false;
+  const ids = participantIds(bills);
+  return members.every((m) => ids.has(m.userId));
+}
+function remainingTransferCount(members, bills, settlements) {
+  return suggestDirectTransfers(members, bills, settlements).length;
+}
+
+function groupProgress(members, bills, settlements) {
+  const hasBill = bills.some(isFilledBill);
+  const confirmed = everyoneParticipates(members, bills);
+  const allSplit = bills.length > 0 && bills.every(isSplitBill);
+  const done = hasBill && remainingTransferCount(members, bills, settlements) === 0;
+  const steps = [
+    { key: "created", done: hasBill },
+    { key: "confirmed", done: confirmed },
+    { key: "split", done: allSplit },
+    { key: "done", done },
+  ];
+  const doneCount = steps.filter((s) => s.done).length;
+  return { steps, doneCount, total: steps.length, complete: doneCount === steps.length };
+}
+
+function computeBadges(input) {
+  const { members, bills, settlements } = input;
+  const bankSet = new Set(input.bankAccountUserIds ?? []);
+  const clearBills = bills.filter(isClearBill);
+  const fullSplit = bills.some(
+    (b) =>
+      b.shares.length > 0 &&
+      members.length > 0 &&
+      members.every((m) => b.shares.some((s) => s.userId === m.userId))
+  );
+  const qrRescue = settlements.some((s) => bankSet.has(s.toUserId));
+  const paidCount = new Map();
+  for (const b of clearBills) paidCount.set(b.paidBy, (paidCount.get(b.paidBy) ?? 0) + 1);
+  const goodOrganizer = [...paidCount.values()].some((c) => c >= 3);
+  const transparent = !!input.exportedStatement;
+  return [
+    { id: "bill-ro-rang", earned: clearBills.length > 0 },
+    { id: "chia-deu-dep", earned: fullSplit },
+    { id: "qr-cuu-nguy", earned: qrRescue },
+    { id: "nguoi-to-chuc-tot", earned: goodOrganizer },
+    { id: "thang-minh-bach", earned: transparent },
+  ];
+}
+
+function teamEnergy(members, bills, settlements, opts) {
+  if (bills.length === 0) return { state: "starting" };
+  const confirmed = everyoneParticipates(members, bills);
+  const debtsHandled = remainingTransferCount(members, bills, settlements) === 0;
+  const shared = !!opts?.exportedStatement;
+  const score = (confirmed ? 1 : 0) + (debtsHandled ? 1 : 0) + (shared ? 1 : 0);
+  const state =
+    score >= 3 ? "done" : score === 2 ? "flowing" : score === 1 ? "coordinating" : "starting";
+  return { state };
+}
+
+function contextTasks(members, bills, settlements, opts) {
+  const tasks = [];
+  const pending = bills.filter((b) => !isSplitBill(b) || !isClearBill(b));
+  if (pending.length > 0) tasks.push({ id: "don-bill-cho", count: pending.length });
+  const remaining = remainingTransferCount(members, bills, settlements);
+  if (remaining > 0) tasks.push({ id: "chot-nhom-hom-nay", count: remaining });
+  if (bills.length > 0 && !everyoneParticipates(members, bills)) {
+    const ids = participantIds(bills);
+    const missing = members.filter((m) => !ids.has(m.userId)).length;
+    if (missing > 0) tasks.push({ id: "cung-kiem-tra", count: missing });
+  }
+  if (bills.length > 0 && remaining === 0 && !opts?.exportedStatement) {
+    tasks.push({ id: "gui-sao-ke", count: 1 });
+  }
+  return tasks;
+}
+
+console.log("\ngroupProgress — 4 bước hoàn tất một chu kỳ");
+
+const gMembers = [
+  { userId: 1, name: "An" },
+  { userId: 2, name: "Bình" },
+  { userId: 3, name: "Chi" },
+];
+
+// Bill An ứng, cả 3 người cùng chia đều → xác nhận đủ + chia xong.
+const fullBill = {
+  title: "Ăn trưa",
+  category: "an-uong",
+  total: 300_000,
+  paidBy: 1,
+  spentOn: "2026-08-01",
+  shares: [
+    { userId: 1, amount: 100_000 },
+    { userId: 2, amount: 100_000 },
+    { userId: 3, amount: 100_000 },
+  ],
+};
+
+check("nhóm chưa có bill: chỉ bước tạo bill chưa xong, không hoàn tất", () => {
+  const p = groupProgress(gMembers, [], []);
+  assert.equal(p.doneCount, 0);
+  assert.equal(p.complete, false);
+});
+
+check("có bill đủ + mọi người tham gia nhưng chưa trả nợ: 3/4 bước", () => {
+  const p = groupProgress(gMembers, [fullBill], []);
+  assert.equal(p.steps.find((s) => s.key === "created").done, true);
+  assert.equal(p.steps.find((s) => s.key === "confirmed").done, true);
+  assert.equal(p.steps.find((s) => s.key === "split").done, true);
+  assert.equal(p.steps.find((s) => s.key === "done").done, false);
+  assert.equal(p.doneCount, 3);
+});
+
+check("trả hết nợ thì đủ 4/4 và complete", () => {
+  const settlements = [
+    { fromUserId: 2, toUserId: 1, amount: 100_000 },
+    { fromUserId: 3, toUserId: 1, amount: 100_000 },
+  ];
+  const p = groupProgress(gMembers, [fullBill], settlements);
+  assert.equal(p.doneCount, 4);
+  assert.equal(p.complete, true);
+});
+
+check("thiếu một người trong mọi share thì bước 'xác nhận' chưa xong", () => {
+  const partial = {
+    ...fullBill,
+    shares: [
+      { userId: 1, amount: 150_000 },
+      { userId: 2, amount: 150_000 },
+    ],
+  };
+  const p = groupProgress(gMembers, [partial], []);
+  assert.equal(p.steps.find((s) => s.key === "confirmed").done, false);
+});
+
+console.log("\ncomputeBadges — huy hiệu suy từ dữ liệu");
+
+check("bill đủ thông tin mở 'Bill rõ ràng' và 'Chia đều đẹp'", () => {
+  const badges = computeBadges({ members: gMembers, bills: [fullBill], settlements: [] });
+  const by = Object.fromEntries(badges.map((b) => [b.id, b.earned]));
+  assert.equal(by["bill-ro-rang"], true);
+  assert.equal(by["chia-deu-dep"], true);
+});
+
+check("thiếu hạng mục thì không có 'Bill rõ ràng'", () => {
+  const noCat = { ...fullBill, category: "" };
+  const badges = computeBadges({ members: gMembers, bills: [noCat], settlements: [] });
+  assert.equal(badges.find((b) => b.id === "bill-ro-rang").earned, false);
+});
+
+check("QR cứu nguy chỉ mở khi người NHẬN có tài khoản ngân hàng", () => {
+  const settlements = [{ fromUserId: 2, toUserId: 1, amount: 100_000 }];
+  const off = computeBadges({ members: gMembers, bills: [fullBill], settlements });
+  assert.equal(off.find((b) => b.id === "qr-cuu-nguy").earned, false);
+  const on = computeBadges({
+    members: gMembers,
+    bills: [fullBill],
+    settlements,
+    bankAccountUserIds: [1],
+  });
+  assert.equal(on.find((b) => b.id === "qr-cuu-nguy").earned, true);
+});
+
+check("người tổ chức tốt cần ≥3 bill rõ ràng cùng một người ứng", () => {
+  const three = [fullBill, fullBill, fullBill];
+  const badges = computeBadges({ members: gMembers, bills: three, settlements: [] });
+  assert.equal(badges.find((b) => b.id === "nguoi-to-chuc-tot").earned, true);
+  const two = computeBadges({ members: gMembers, bills: [fullBill, fullBill], settlements: [] });
+  assert.equal(two.find((b) => b.id === "nguoi-to-chuc-tot").earned, false);
+});
+
+check("tháng minh bạch mở khi đã xuất sao kê", () => {
+  const badges = computeBadges({
+    members: gMembers,
+    bills: [fullBill],
+    settlements: [],
+    exportedStatement: true,
+  });
+  assert.equal(badges.find((b) => b.id === "thang-minh-bach").earned, true);
+});
+
+console.log("\nteamEnergy — trạng thái năng lượng nhóm");
+
+check("chưa có bill => đang khởi động", () =>
+  assert.equal(teamEnergy(gMembers, [], []).state, "starting")
+);
+check("có bill, đã xác nhận, chưa trả nợ => đang phối hợp", () =>
+  assert.equal(teamEnergy(gMembers, [fullBill], []).state, "coordinating")
+);
+check("xác nhận + hết nợ => đã vào guồng", () => {
+  const settlements = [
+    { fromUserId: 2, toUserId: 1, amount: 100_000 },
+    { fromUserId: 3, toUserId: 1, amount: 100_000 },
+  ];
+  assert.equal(teamEnergy(gMembers, [fullBill], settlements).state, "flowing");
+});
+check("xác nhận + hết nợ + có sao kê => hoàn tất kỳ", () => {
+  const settlements = [
+    { fromUserId: 2, toUserId: 1, amount: 100_000 },
+    { fromUserId: 3, toUserId: 1, amount: 100_000 },
+  ];
+  assert.equal(
+    teamEnergy(gMembers, [fullBill], settlements, { exportedStatement: true }).state,
+    "done"
+  );
+});
+
+console.log("\ncontextTasks — chỉ hiện nhiệm vụ khi có điều kiện thật");
+
+check("nhóm sạch nợ + đủ share + đã có sao kê => không nhiệm vụ nào", () => {
+  const settlements = [
+    { fromUserId: 2, toUserId: 1, amount: 100_000 },
+    { fromUserId: 3, toUserId: 1, amount: 100_000 },
+  ];
+  const tasks = contextTasks(gMembers, [fullBill], settlements, { exportedStatement: true });
+  assert.deepEqual(tasks, []);
+});
+
+check("còn nợ thì có nhiệm vụ 'chốt nhóm hôm nay'", () => {
+  const tasks = contextTasks(gMembers, [fullBill], []);
+  assert.ok(tasks.some((t) => t.id === "chot-nhom-hom-nay"));
+});
+
+check("bill thiếu thông tin thì có nhiệm vụ 'dọn bill đang chờ'", () => {
+  const messy = { ...fullBill, category: "", shares: [] };
+  const tasks = contextTasks(gMembers, [messy], []);
+  const t = tasks.find((x) => x.id === "don-bill-cho");
+  assert.ok(t);
+  assert.equal(t.count, 1);
+});
+
+check("sạch nợ nhưng chưa có sao kê => gợi ý gửi sao kê", () => {
+  const settlements = [
+    { fromUserId: 2, toUserId: 1, amount: 100_000 },
+    { fromUserId: 3, toUserId: 1, amount: 100_000 },
+  ];
+  const tasks = contextTasks(gMembers, [fullBill], settlements);
+  assert.ok(tasks.some((t) => t.id === "gui-sao-ke"));
+});
+
 console.log(`\n${passed} kiểm tra đã chạy xong.\n`);

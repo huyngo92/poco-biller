@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
+import Mascot from "@/components/Mascot";
 import { IconAlert, IconSpinner, ICON_SIZE } from "@/components/Icons";
 
 type Mode = "login" | "register";
@@ -71,10 +72,13 @@ export default function AuthForm() {
 
   return (
     <div className="shell" style={{ paddingBottom: 40, paddingTop: 56 }}>
-      <div style={{ marginBottom: 26 }}>
-        <span className="brand-mark" aria-hidden="true" />
-        <span className="brand">Poco Biller</span>
-        <h1 style={{ marginTop: 18 }}>
+      <div className="auth-hero">
+        <Mascot name="celebrate" size={132} />
+        <div className="row" style={{ justifyContent: "center", gap: 8 }}>
+          <span className="brand-mark" aria-hidden="true" />
+          <span className="brand">Poco Biller</span>
+        </div>
+        <h1 style={{ marginTop: 14, marginBottom: 4 }}>
           {mode === "login" ? "Đăng nhập" : "Tạo tài khoản"}
         </h1>
         <p className="muted" style={{ margin: 0 }}>

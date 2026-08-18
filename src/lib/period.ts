@@ -117,3 +117,15 @@ export function overdueLabel(isoDate: string): string | null {
   if (days >= 14) return `${Math.floor(days / 7)} tuần`;
   return null;
 }
+
+/** Nhãn nhóm bill theo mốc thời gian, kiểu Lịch/Reminders của iOS. */
+export function sectionLabel(isoDate: string): string {
+  const days = daysSince(isoDate);
+  if (days === 0) return "Hôm nay";
+  if (days === 1) return "Hôm qua";
+  if (days >= 2 && days <= 6) return "Tuần này";
+  const [y, m] = isoDate.split("-").map(Number);
+  const now = new Date();
+  if (y === now.getFullYear() && m === now.getMonth() + 1) return "Tháng này";
+  return `Tháng ${m}, ${y}`;
+}
