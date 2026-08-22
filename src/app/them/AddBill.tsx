@@ -27,23 +27,49 @@ import {
   IconSend,
   IconSparkles,
   IconSpinner,
+  IconStop,
   ICON_SIZE,
 } from "@/components/Icons";
 
 /** Web Speech API chưa có type sẵn trong lib.dom.d.ts — khai báo tối thiểu phần dùng tới. */
 type SpeechRecognitionResultLike = { transcript: string };
-type SpeechRecognitionEventLike = {
-  results: ArrayLike<ArrayLike<SpeechRecognitionResultLike>>;
+type SpeechRecognitionResultListLike = ArrayLike<SpeechRecognitionResultLike> & {
+  isFinal: boolean;
 };
+type SpeechRecognitionEventLike = {
+  resultIndex: number;
+  results: ArrayLike<SpeechRecognitionResultListLike>;
+};
+type SpeechRecognitionErrorEventLike = { error: string };
 type SpeechRecognitionLike = {
   lang: string;
   interimResults: boolean;
   onresult: ((e: SpeechRecognitionEventLike) => void) | null;
   onend: (() => void) | null;
-  onerror: (() => void) | null;
+  onerror: ((e: SpeechRecognitionErrorEventLike) => void) | null;
   start: () => void;
   stop: () => void;
 };
+
+/** Số cột của waveform hiển thị khi đang nghe — đủ dày trên card rộng ~530px. */
+const WAVE_BARS = 20;
+
+/** Web Speech API trả mã lỗi tiếng Anh — dịch sang câu người dùng hiểu được. */
+function speechErrorMessage(code: string): string {
+  switch (code) {
+    case "not-allowed":
+    case "permission-denied":
+      return "Bạn cần cho phép truy cập micro trong trình duyệt.";
+    case "no-speech":
+      return "Không nghe thấy gì. Thử nói gần micro hơn.";
+    case "audio-capture":
+      return "Không tìm thấy micro trên thiết bị này.";
+    case "network":
+      return "Mất kết nối khi nhận diện giọng nói.";
+    default:
+      return "Không nhận diện được giọng nói, thử lại nhé.";
+  }
+}
 
 type Mode = "photo" | "chat" | "manual";
 
@@ -115,6 +141,16 @@ export default function AddBill({
   const [chatDone, setChatDone] = useState(false);
   const [listening, setListening] = useState(false);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const finalTranscriptRef = useRef("");
+  const chatBaseRef = useRef("");
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  // Waveform thật theo âm lượng mic khi đang nghe (độc lập với SpeechRecognition)
+  const streamRef = useRef<MediaStream | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const rafRef = useRef<number | null>(null);
+  const barRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => setGroup(resolveGroup(groups)), [groups]);
 
@@ -223,6 +259,59 @@ export default function AddBill({
     }
   }
 
+  function stopWaveform() {
+    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    rafRef.current = null;
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+    audioCtxRef.current?.close().catch(() => {});
+    audioCtxRef.current = null;
+    analyserRef.current = null;
+    for (const bar of barRefs.current) {
+      if (bar) bar.style.height = "4px";
+    }
+  }
+
+  async function startWaveform() {
+    if (!navigator.mediaDevices?.getUserMedia) return;
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
+    if (reduceMotion) return;
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+
+      const AudioCtx =
+        window.AudioContext ??
+        (window as unknown as { webkitAudioContext: typeof AudioContext })
+          .webkitAudioContext;
+      const audioCtx = new AudioCtx();
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 64;
+      audioCtx.createMediaStreamSource(stream).connect(analyser);
+      audioCtxRef.current = audioCtx;
+      analyserRef.current = analyser;
+
+      const data = new Uint8Array(analyser.frequencyBinCount);
+      const tick = () => {
+        analyser.getByteFrequencyData(data);
+        for (let i = 0; i < barRefs.current.length; i++) {
+          const bar = barRefs.current[i];
+          if (!bar) continue;
+          const level = data[i % data.length] / 255;
+          bar.style.height = `${4 + level * 24}px`;
+        }
+        rafRef.current = requestAnimationFrame(tick);
+      };
+      rafRef.current = requestAnimationFrame(tick);
+    } catch {
+      // Không xin được quyền/không có micro cho waveform — dictation vẫn chạy
+      // qua SpeechRecognition riêng, nên bỏ qua lặng lẽ.
+    }
+  }
+
   function toggleMic() {
     const SpeechRecognitionCtor = getSpeechRecognition();
     if (!SpeechRecognitionCtor) return;
@@ -232,21 +321,48 @@ export default function AddBill({
       return;
     }
 
+    setError("");
+    chatBaseRef.current = chatInput ? `${chatInput} ` : "";
+    finalTranscriptRef.current = "";
+
     const recognition = new SpeechRecognitionCtor();
     recognition.lang = "vi-VN";
-    recognition.interimResults = false;
+    recognition.interimResults = true;
     recognition.onresult = (e: SpeechRecognitionEventLike) => {
-      const text = e.results[0]?.[0]?.transcript ?? "";
-      if (text) setChatInput((prev) => (prev ? `${prev} ${text}` : text));
+      let interim = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const result = e.results[i];
+        const transcript = result[0]?.transcript ?? "";
+        if (result.isFinal) finalTranscriptRef.current += transcript;
+        else interim += transcript;
+      }
+      setChatInput(chatBaseRef.current + finalTranscriptRef.current + interim);
     };
-    recognition.onend = () => setListening(false);
-    recognition.onerror = () => setListening(false);
+    recognition.onend = () => {
+      setListening(false);
+      stopWaveform();
+    };
+    recognition.onerror = (e: SpeechRecognitionErrorEventLike) => {
+      setListening(false);
+      stopWaveform();
+      setError(speechErrorMessage(e.error));
+    };
     recognitionRef.current = recognition;
     recognition.start();
     setListening(true);
+    void startWaveform();
+  }
+
+  useEffect(() => stopWaveform, []);
+
+  function stopListening() {
+    recognitionRef.current?.stop();
+    stopWaveform();
+    setListening(false);
   }
 
   function resetToStart(msg: string) {
+    stopListening();
     setSaved(msg);
     setError("");
     setMode(null);
@@ -260,6 +376,7 @@ export default function AddBill({
   }
 
   function backToChooser() {
+    stopListening();
     setMode(null);
     setError("");
     setOcrItems([]);
@@ -382,41 +499,71 @@ export default function AddBill({
               ))}
             </div>
 
-            <div className="row" style={{ alignItems: "flex-end" }}>
-              <textarea
-                className="textarea"
-                style={{ minHeight: 60 }}
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    void runChat();
-                  }
-                }}
-                placeholder="Ăn trưa 450k chia đều 3 người"
-                aria-label="Mô tả khoản chi"
-              />
-              {getSpeechRecognition() && (
-                <button
-                  type="button"
-                  className="btn btn-icon"
-                  aria-pressed={listening}
-                  aria-label="Nhập bằng giọng nói"
-                  onClick={toggleMic}
-                >
-                  <IconMic size={ICON_SIZE.md} />
-                </button>
+            <div className="compose-bar">
+              {listening && (
+                <div className="wave-row">
+                  <span className="listening-dot" aria-hidden="true" />
+                  <div className="wave-viz" aria-hidden="true">
+                    {Array.from({ length: WAVE_BARS }, (_, i) => (
+                      <div
+                        key={i}
+                        className="wave-bar"
+                        ref={(el) => {
+                          barRefs.current[i] = el;
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <span className="faint tiny">Đang nghe…</span>
+                </div>
               )}
-              <button
-                type="button"
-                className="btn btn-primary btn-icon"
-                onClick={() => void runChat()}
-                disabled={chatBusy || !chatInput.trim()}
-                aria-label="Gửi cho AI"
-              >
-                {chatBusy ? <IconSpinner size={ICON_SIZE.md} /> : <IconSend size={ICON_SIZE.md} />}
-              </button>
+              <div className="compose-row">
+                <textarea
+                  ref={textareaRef}
+                  className="compose-textarea"
+                  value={chatInput}
+                  onChange={(e) => {
+                    setChatInput(e.target.value);
+                    const el = e.target;
+                    el.style.height = "auto";
+                    el.style.height = `${el.scrollHeight}px`;
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      if (!listening) void runChat();
+                    }
+                  }}
+                  placeholder="Ăn trưa 450k chia đều 3 người"
+                  aria-label="Mô tả khoản chi"
+                />
+                <div className="compose-actions">
+                  {getSpeechRecognition() && (
+                    <button
+                      type="button"
+                      className={listening ? "btn btn-icon mic-live" : "btn btn-icon"}
+                      aria-pressed={listening}
+                      aria-label={listening ? "Dừng nghe" : "Nhập bằng giọng nói"}
+                      onClick={toggleMic}
+                    >
+                      {listening ? (
+                        <IconStop size={ICON_SIZE.md} />
+                      ) : (
+                        <IconMic size={ICON_SIZE.md} />
+                      )}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-icon"
+                    onClick={() => void runChat()}
+                    disabled={chatBusy || listening || !chatInput.trim()}
+                    aria-label="Gửi cho AI"
+                  >
+                    {chatBusy ? <IconSpinner size={ICON_SIZE.md} /> : <IconSend size={ICON_SIZE.md} />}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </section>

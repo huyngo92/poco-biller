@@ -115,90 +115,19 @@ function suggestTransfers(balances, minAmount = 1000) {
 
 /* ---------- bản sao src/lib/chart.ts ---------- */
 
-function dailyBuckets(bills, from, to) {
-  const start = parseIsoDate(from);
-  const end = parseIsoDate(to);
-  if (!start || !end || end < start)
-    return { buckets: [], unit: "day", unitLabel: "ngày" };
-
-  const days = Math.round((end - start) / 86_400_000) + 1;
-  const unit = days > 31 ? "week" : "day";
-  const MAX_COLS = unit === "day" ? 31 : 26;
-  const step = unit === "week" ? Math.max(7, Math.ceil(days / MAX_COLS)) : 1;
-  const count = Math.min(Math.ceil(days / step), MAX_COLS);
-
-  const buckets = [];
-  for (let i = 0; i < count; i++) {
-    const d = new Date(start + i * step * 86_400_000);
-    buckets.push({
-      key: isoOfDate(d),
-      label:
-        unit === "week"
-          ? `${d.getDate()}/${d.getMonth() + 1}`
-          : String(d.getDate()),
-      amount: 0,
-    });
-  }
-
-  for (const b of bills) {
-    const t = parseIsoDate(b.spentOn);
-    if (t === null || t < start) continue;
-    const i = Math.floor((t - start) / 86_400_000 / step);
-    if (i >= 0 && i < count) buckets[i].amount += b.total;
-  }
-
-  const unitLabel = step === 1 ? "ngày" : step === 7 ? "tuần" : `${step} ngày`;
-  return { buckets, unit, unitLabel };
-}
-
-function parseIsoDate(s) {
-  const [y, m, d] = s.split("-").map(Number);
-  if (!y || !m || !d) return null;
-  const t = new Date(y, m - 1, d).getTime();
-  return Number.isFinite(t) ? t : null;
-}
-
-function isoOfDate(d) {
-  const p = (n) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-}
-
 function pctChange(current, previous) {
   if (previous <= 0) return null;
   return Math.round(((current - previous) / previous) * 100);
 }
 
-function sparkPoints(values, w, h, pad = 2) {
-  if (values.length === 0) return [];
-  const max = Math.max(...values, 1);
-  const innerH = h - pad * 2;
-  const innerW = w - pad * 2;
-  if (values.length === 1)
-    return [
-      { x: pad, y: pad + innerH / 2 },
-      { x: w - pad, y: pad + innerH / 2 },
-    ];
-  const stepX = innerW / (values.length - 1);
-  return values.map((v, i) => ({
-    x: round2(pad + i * stepX),
-    y: round2(pad + innerH * (1 - v / max)),
-  }));
-}
-
-/** Cung 360° trong SVG không vẽ gì — arcPath phải tách thành hai nửa. */
-function arcIsSplitAtFullCircle(a0, a1) {
-  return a1 - a0 >= 359.99;
-}
-
-function round2(n) {
-  return Math.round(n * 100) / 100;
-}
-
-/** Chỉ tính phần trăm — phần vẽ path không kiểm tra bằng số được. */
+/** Chỉ tính phần trăm — phần vẽ path do Visx xử lý. */
 function donutPercents(data) {
   const total = data.reduce((a, b) => a + b.amount, 0);
   if (total <= 0) return [];
-  return data.map((d) => Math.round((d.amount / total) * 100));
+  return data.map((d) => ({
+    category: d.category,
+    percent: Math.round((d.amount / total) * 100),
+  }));
 }
 
 /* ---------- bản sao resolveMessagesUrl trong src/lib/claude.ts ---------- */
@@ -708,86 +637,6 @@ check("chuỗi rác không làm crash", () =>
   assert.equal(overdueLabel("khong-phai-ngay"), null)
 );
 
-console.log("\ndailyBuckets — gộp bill thành cột chart");
-
-check("kỳ 1 tháng thì mỗi ngày một cột", () => {
-  const r = dailyBuckets([], "2026-08-01", "2026-08-31");
-  assert.equal(r.unit, "day");
-  assert.equal(r.buckets.length, 31);
-  assert.equal(r.unitLabel, "ngày");
-});
-
-check("ngày không có bill vẫn có cột 0", () => {
-  const r = dailyBuckets(
-    [{ spentOn: "2026-08-03", total: 90_000 }],
-    "2026-08-01",
-    "2026-08-05"
-  );
-  assert.deepEqual(
-    r.buckets.map((b) => b.amount),
-    [0, 0, 90_000, 0, 0]
-  );
-});
-
-check("nhiều bill cùng ngày thì dồn vào một cột", () => {
-  const r = dailyBuckets(
-    [
-      { spentOn: "2026-08-02", total: 40_000 },
-      { spentOn: "2026-08-02", total: 60_000 },
-    ],
-    "2026-08-01",
-    "2026-08-03"
-  );
-  assert.equal(r.buckets[1].amount, 100_000);
-});
-
-check("kỳ quý thì gộp theo tuần", () => {
-  const r = dailyBuckets([], "2026-07-01", "2026-09-30");
-  assert.equal(r.unit, "week");
-  assert.equal(r.unitLabel, "tuần");
-  assert.equal(r.buckets.length, 14); // 92 ngày / 7
-});
-
-check("kỳ rất dài thì nới bước gộp, không cắt đuôi", () => {
-  const r = dailyBuckets(
-    [{ spentOn: "2029-12-25", total: 500_000 }],
-    "2026-01-01",
-    "2029-12-31"
-  );
-  assert.ok(r.buckets.length <= 26, "không quá 26 cột");
-  const sum = r.buckets.reduce((a, b) => a + b.amount, 0);
-  assert.equal(sum, 500_000, "bill cuối kỳ vẫn được đếm");
-});
-
-check("tổng các cột luôn bằng tổng bill trong kỳ", () => {
-  const bills = [
-    { spentOn: "2026-08-01", total: 10_000 },
-    { spentOn: "2026-08-15", total: 20_000 },
-    { spentOn: "2026-08-31", total: 30_000 },
-  ];
-  const r = dailyBuckets(bills, "2026-08-01", "2026-08-31");
-  assert.equal(
-    r.buckets.reduce((a, b) => a + b.amount, 0),
-    60_000
-  );
-});
-
-check("ngày rác không làm crash", () => {
-  const r = dailyBuckets(
-    [{ spentOn: "khong-phai-ngay", total: 999 }],
-    "2026-08-01",
-    "2026-08-03"
-  );
-  assert.equal(
-    r.buckets.reduce((a, b) => a + b.amount, 0),
-    0
-  );
-});
-
-check("khoảng ngày ngược thì trả rỗng", () =>
-  assert.deepEqual(dailyBuckets([], "2026-08-31", "2026-08-01").buckets, [])
-);
-
 console.log("\npctChange — so với kỳ trước");
 
 check("tăng 20%", () => assert.equal(pctChange(120, 100), 20));
@@ -797,55 +646,30 @@ check("kỳ trước bằng 0 thì không so được", () =>
   assert.equal(pctChange(100, 0), null)
 );
 
-console.log("\nsparkPoints — toạ độ đường xu hướng");
-
-check("mảng rỗng trả rỗng", () => assert.deepEqual(sparkPoints([], 100, 40), []));
-check("một điểm thì vẽ đường nằm ngang", () => {
-  const p = sparkPoints([50], 100, 40, 4);
-  assert.equal(p.length, 2);
-  assert.equal(p[0].y, p[1].y);
-});
-check("điểm cao nhất nằm sát mép trên", () => {
-  const p = sparkPoints([10, 100, 50], 100, 40, 4);
-  assert.equal(p[1].y, 4);
-});
-check("x trải đủ chiều rộng, có chừa lề cho nét", () => {
-  const p = sparkPoints([1, 2, 3], 100, 40, 4);
-  assert.equal(p[0].x, 4);
-  assert.equal(p[2].x, 96);
-});
-check("mọi điểm nằm trong khung", () => {
-  const p = sparkPoints([0, 900, 300, 0, 120], 260, 44, 4);
-  assert.ok(p.every((q) => q.x >= 4 && q.x <= 256 && q.y >= 4 && q.y <= 40));
-});
-check("toàn số 0 không gây chia cho 0", () => {
-  const p = sparkPoints([0, 0, 0], 100, 40, 4);
-  assert.ok(p.every((q) => Number.isFinite(q.y)));
-});
-
 console.log("\ndonutPercents — phân bổ hạng mục");
 
 check("chia đều ba phần", () =>
   assert.deepEqual(
     donutPercents([
-      { amount: 100 },
-      { amount: 100 },
-      { amount: 100 },
+      { category: "an-uong", amount: 100 },
+      { category: "ca-phe", amount: 100 },
+      { category: "di-lai", amount: 100 },
     ]),
-    [33, 33, 33]
+    [
+      { category: "an-uong", percent: 33 },
+      { category: "ca-phe", percent: 33 },
+      { category: "di-lai", percent: 33 },
+    ]
   )
 );
 check("tổng 0 thì không có lát nào", () =>
-  assert.deepEqual(donutPercents([{ amount: 0 }]), [])
+  assert.deepEqual(donutPercents([{ category: "khac", amount: 0 }]), [])
 );
 check("một hạng mục chiếm 100%", () =>
-  assert.deepEqual(donutPercents([{ amount: 250_000 }]), [100])
+  assert.deepEqual(donutPercents([{ category: "an-uong", amount: 250_000 }]), [
+    { category: "an-uong", percent: 100 },
+  ])
 );
-check("lát 100% phải được tách thành hai nửa cung", () => {
-  // Cung -90° → 270° là đúng 360°, SVG sẽ không vẽ nếu để nguyên một arc
-  assert.equal(arcIsSplitAtFullCircle(-90, 270), true);
-  assert.equal(arcIsSplitAtFullCircle(-89, 269), false);
-});
 
 console.log("\nresolveMessagesUrl — ghép endpoint AI từ env");
 

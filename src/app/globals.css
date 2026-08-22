@@ -614,6 +614,103 @@ h2 {
   font-family: inherit;
 }
 
+/* ---------- Compose bar (nhập nhanh AI: mic + waveform + gửi) ---------- */
+
+.compose-bar {
+  background: var(--bg-elevated);
+  border: 1px solid var(--separator);
+  border-radius: var(--r-lg);
+  padding: 10px 10px 10px 14px;
+}
+
+.compose-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.compose-textarea {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  max-height: 160px;
+  overflow-y: auto;
+  resize: none;
+  border: none;
+  background: none;
+  padding: 10px 4px;
+  font-size: 17px;
+  font-family: inherit;
+  color: var(--label);
+}
+
+.compose-textarea:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.compose-actions {
+  display: flex;
+  gap: 2px;
+  flex: 0 0 auto;
+}
+
+.wave-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 4px 10px;
+}
+
+.listening-dot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--tint-strong);
+  animation: pulse 1.8s ease-in-out infinite;
+}
+
+.wave-viz {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  height: 28px;
+}
+
+.wave-bar {
+  width: 3px;
+  height: 4px;
+  border-radius: var(--r-pill);
+  background: var(--tint);
+  transition: height 60ms linear;
+}
+
+/* Nút mic khi đang nghe: nền tint nhạt + vòng nhấp nháy báo đang ghi */
+.mic-live {
+  position: relative;
+  background: var(--tint-wash);
+  color: var(--tint-strong);
+}
+
+.mic-live::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: var(--r-pill);
+  border: 1.5px solid var(--tint);
+  animation: pulse 1.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .listening-dot,
+  .mic-live::after {
+    animation: none !important;
+  }
+}
+
 .hint {
   font-size: 13px; /* footnote */
   line-height: 1.35;
@@ -682,6 +779,15 @@ h2 {
 .chip[aria-pressed="true"] {
   background: var(--tint-strong);
   color: var(--label-on-tint);
+}
+
+.chip-sep {
+  flex: 0 0 auto;
+  align-self: center;
+  width: 1px;
+  height: 20px;
+  background: var(--separator);
+  margin: 0 2px;
 }
 
 /* Segmented control iOS: rãnh xám, "viên" trắng nổi lên ở mục đang chọn */
@@ -786,6 +892,20 @@ h2 {
   cursor: pointer;
   transition: background var(--dur-fast) var(--ease-ios);
   -webkit-tap-highlight-color: transparent;
+}
+
+/* Nhãn nhóm nhẹ chèn giữa các hàng trong CÙNG một .ledger — dùng khi cần tách
+   vài nhóm nhỏ mà không tách thành nhiều .card rời (đỡ rời rạc hơn nhiều khối
+   trắng cạnh nhau). */
+.ledger-label {
+  padding: 14px 16px 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--label-secondary);
+}
+
+.ledger-label + li .entry::before {
+  display: none;
 }
 
 /* Đường phân cách thụt vào 16px như list của iOS, không kéo hết chiều ngang.
@@ -906,42 +1026,11 @@ h2 {
   font-variant-numeric: tabular-nums;
 }
 
-/* Vạch 0 ở giữa, thanh mọc sang trái (nợ) hoặc phải (được nhận) */
-.bal-track {
-  position: relative;
-  height: 6px;
-  background: var(--fill-quaternary);
-  border-radius: var(--r-pill);
-  overflow: hidden;
-}
-
-.bal-track::before {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: -2px;
-  bottom: -2px;
-  width: 1px;
-  background: var(--separator-opaque);
-  z-index: 1;
-}
-
-.bal-fill {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  border-radius: var(--r-pill);
-  transition: width var(--dur) var(--ease-ios);
-}
-
-.bal-fill.neg {
-  right: 50%;
-  background: var(--red);
-}
-
-.bal-fill.pos {
-  left: 50%;
-  background: var(--green);
+.bal-pie-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 16px 16px 12px;
+  box-shadow: inset 0 -0.5px 0 var(--separator);
 }
 
 /* ---------- Ô số liệu ---------- */
@@ -1625,151 +1714,6 @@ input[type="checkbox"] {
   font-variant-numeric: tabular-nums;
 }
 
-/* ---------- Cột chi tiêu ---------- */
-
-.bars {
-  position: relative;
-  display: flex;
-  align-items: flex-end;
-  gap: 3px;
-  height: 92px;
-  /* Nhãn ngày tràn ra ngoài đáy khung, nên chừa chỗ bằng margin chứ không
-     phải padding — nhờ vậy `bottom: %` của vạch trung bình và chiều cao cột
-     cùng lấy mốc là 92px, hai thứ mới khớp nhau. */
-  margin-bottom: 16px;
-}
-
-.bar-col {
-  position: relative;
-  flex: 1 1 0;
-  min-width: 0;
-  height: 100%;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-}
-
-.bar {
-  width: 100%;
-  max-width: 22px;
-  background: var(--tint);
-  border-radius: 3px 3px 2px 2px;
-  /* Cột 0 đồng vẫn để lại một vạch mảnh, cho thấy ngày đó có tồn tại */
-  min-height: 2px;
-  transition: height var(--dur) var(--ease-ios);
-}
-
-.bar.peak {
-  background: var(--tint-strong);
-}
-
-/* Ngày không chi gì: vạch xám mảnh. Cùng màu xanh sẽ bị đọc nhầm thành có chi
-   một khoản rất nhỏ. */
-.bar.zero {
-  background: var(--fill-tertiary);
-  border-radius: 1px;
-}
-
-.bar-label {
-  position: absolute;
-  bottom: -16px;
-  font-size: 10px;
-  color: var(--label-tertiary);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-/* Vạch trung bình, `bottom` đặt theo % chiều cao khung cột (92px) */
-.bars-avg {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 0;
-  /* Dùng label-tertiary chứ không phải separator: vạch này mang thông tin
-     (mức trung bình) nên phải đạt 3:1, màu đường kẻ hairline quá nhạt. */
-  border-top: 1px dashed var(--label-tertiary);
-  pointer-events: none;
-}
-
-/* ---------- Xếp hạng người ứng tiền ---------- */
-
-.rank {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.rank > li {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-}
-
-.rank-num {
-  flex: 0 0 auto;
-  width: 20px;
-  height: 20px;
-  margin-top: 1px;
-  border-radius: var(--r-pill);
-  background: var(--fill-tertiary);
-  color: var(--label-secondary);
-  font-size: 11px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.rank-body {
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.rank-head {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-}
-
-.rank-name {
-  font-size: 15px;
-  color: var(--label);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.rank-value {
-  margin-left: auto;
-  flex: 0 0 auto;
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--label);
-  font-variant-numeric: tabular-nums;
-}
-
-.rank-track {
-  display: block;
-  height: 6px;
-  border-radius: var(--r-pill);
-  background: var(--fill-quaternary);
-  overflow: hidden;
-}
-
-.rank-fill {
-  display: block;
-  height: 100%;
-  border-radius: var(--r-pill);
-  background: var(--tint);
-  transition: width var(--dur) var(--ease-ios);
-}
-
 /* ---------- Sparkline xu hướng ---------- */
 
 .trend-head {
@@ -1826,6 +1770,38 @@ input[type="checkbox"] {
 .spark-scale > li.now {
   color: var(--label);
   font-weight: 600;
+}
+
+/* ---------- Tooltip chart (Visx TooltipInPortal) ---------- */
+
+.chart-tooltip {
+  background: var(--bg-elevated) !important;
+  border: 1px solid var(--separator) !important;
+  border-radius: var(--r-sm) !important;
+  box-shadow: var(--shadow-raised) !important;
+  padding: 7px 10px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 2px !important;
+  pointer-events: none !important;
+  min-width: 0 !important;
+}
+
+.chart-tooltip-label {
+  font-size: 12px;
+  color: var(--label-secondary);
+  white-space: nowrap;
+}
+
+.chart-tooltip-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--label);
+}
+
+.chart-tooltip-sub {
+  font-size: 12px;
+  color: var(--label-tertiary);
 }
 
 /* ---------- Profile & Avatar ---------- */

@@ -11,6 +11,12 @@
     "test": "node scripts/test-logic.mjs"
   },
   "dependencies": {
+    "@visx/curve": "^4.0.0",
+    "@visx/event": "^4.0.0",
+    "@visx/group": "^4.0.0",
+    "@visx/scale": "^4.0.0",
+    "@visx/shape": "^4.0.0",
+    "@visx/tooltip": "^4.0.0",
     "bcryptjs": "^2.4.3",
     "better-sqlite3": "^11.5.0",
     "lucide-react": "^0.469.0",

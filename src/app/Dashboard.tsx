@@ -8,7 +8,6 @@ import {
   categoryLabel,
   type Bill,
   type Group,
-  type PeriodKind,
   type SessionUser,
 } from "@/lib/types";
 import GroupPicker from "@/components/GroupPicker";
@@ -24,7 +23,8 @@ import {
   groupProgress,
   teamEnergy,
 } from "@/lib/gamification";
-import { CategoryDonut, TrendSpark } from "@/components/Charts";
+import { BalancePie, CategoryDonut } from "@/components/Charts";
+import { Skeleton, SkeletonLedgerRows } from "@/components/Skeleton";
 import {
   IconAdd,
   IconAlert,
@@ -33,13 +33,6 @@ import {
   IconReceiveCircle,
   ICON_SIZE,
 } from "@/components/Icons";
-
-const PERIODS: { kind: PeriodKind; label: string }[] = [
-  { kind: "week", label: "Tuần" },
-  { kind: "month", label: "Tháng" },
-  { kind: "quarter", label: "Quý" },
-  { kind: "all", label: "Tất cả" },
-];
 
 const MONTH_SHORT = [
   "T1", "T2", "T3", "T4", "T5", "T6",
@@ -62,11 +55,6 @@ export default function Dashboard({
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [openBill, setOpenBill] = useState<Bill | null>(null);
-
-  // Kỳ xem riêng cho phần "Xu hướng chi tiêu" / "Tiền đi vào đâu" — phần còn
-  // lại của trang (số dư, tiến độ, huy hiệu, bill gần đây) luôn xem "Tất cả".
-  const [chartKind, setChartKind] = useState<PeriodKind>("month");
-  const [chartData, setChartData] = useState<Overview | null>(null);
 
   useEffect(() => {
     setGroup(resolveGroup(groups));
@@ -91,13 +79,6 @@ export default function Dashboard({
   useEffect(() => {
     void load();
   }, [load]);
-
-  useEffect(() => {
-    if (!group) return;
-    apiJson<Overview>(`/api/groups/${group.id}/overview?period=${chartKind}&offset=0`)
-      .then(setChartData)
-      .catch(() => setChartData(null));
-  }, [group, chartKind]);
 
   // Số cần trả / sẽ nhận tách riêng — suy từ transfer trực tiếp đã có sẵn
   // trong Overview (suggestDirectTransfers), không đổi logic balance.ts.
@@ -223,9 +204,7 @@ export default function Dashboard({
             </div>
 
             {loading && !data ? (
-              <p className="num amount-lg" style={{ margin: 0 }}>
-                …
-              </p>
+              <Skeleton width={180} height={28} />
             ) : oweTotal <= 0 && receiveTotal <= 0 ? (
               <p className="num amount-lg" style={{ margin: 0 }}>
                 Bạn đã cân bằng
@@ -281,46 +260,74 @@ export default function Dashboard({
             <div className="stat">
               <p className="stat-label">Nhóm đã chi</p>
               <p className="num stat-value">
-                {formatVnd(data?.totals.spent ?? 0)}
+                {loading && !data ? (
+                  <Skeleton width={70} height={18} inline />
+                ) : (
+                  formatVnd(data?.totals.spent ?? 0)
+                )}
               </p>
             </div>
             <div className="stat">
               <p className="stat-label">Số bill</p>
-              <p className="num stat-value">{data?.totals.billCount ?? 0}</p>
+              <p className="num stat-value">
+                {loading && !data ? (
+                  <Skeleton width={28} height={18} inline />
+                ) : (
+                  data?.totals.billCount ?? 0
+                )}
+              </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Chart chính — kỳ xem riêng, không ảnh hưởng số dư/tiến độ/bill gần đây */}
+      {/* Số dư cả nhóm, tiền đi vào đâu, huy hiệu — luôn theo "Tất cả" */}
       {data && data.bills.length > 0 && (
         <>
-          <div
-            className="segmented"
-            role="group"
-            aria-label="Kỳ xem biểu đồ"
-            style={{ marginBottom: 14 }}
-          >
-            {PERIODS.map((p) => (
-              <button
-                key={p.kind}
-                type="button"
-                className="segment"
-                aria-pressed={chartKind === p.kind}
-                onClick={() => setChartKind(p.kind)}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-
-          {chartData && chartData.trend.length >= 2 && (
+          {data.balances.length > 0 && (
             <section className="section">
               <div className="section-head">
-                <h2 className="section-title">Xu hướng chi tiêu</h2>
+                <h2 className="section-title">Số dư từng người</h2>
               </div>
-              <div className="card card-pad">
-                <TrendSpark trend={chartData.trend} />
+              <div className="card">
+                <div className="bal-pie-wrap">
+                  <BalancePie balances={data.balances} />
+                </div>
+                <div className="balances">
+                  {data.balances
+                    .slice()
+                    .sort((a, b) => a.net - b.net)
+                    .map((b) => (
+                      <div className="bal-row" key={b.userId}>
+                        <div className="bal-head">
+                          <Avatar avatarId={b.avatar} name={b.name} size={28} />
+                          <span className="bal-name">
+                            {b.name}
+                            {b.userId === user.id && (
+                              <span className="tag tag-blue" style={{ marginLeft: 6 }}>
+                                Bạn
+                              </span>
+                            )}
+                          </span>
+                          <span
+                            className={`num bal-net ${
+                              b.net < 0 ? "debt" : b.net > 0 ? "credit" : "muted"
+                            }`}
+                          >
+                            {b.net === 0
+                              ? "Cân bằng"
+                              : b.net < 0
+                                ? `nợ ${formatShort(-b.net)}`
+                                : `nhận ${formatShort(b.net)}`}
+                          </span>
+                        </div>
+                        <p className="faint tiny" style={{ margin: 0 }}>
+                          Đã ứng {formatShort(b.paid)} · phần phải trả{" "}
+                          {formatShort(b.owed)}
+                        </p>
+                      </div>
+                    ))}
+                </div>
               </div>
             </section>
           )}
@@ -329,16 +336,12 @@ export default function Dashboard({
             <div className="section-head">
               <h2 className="section-title">Tiền đi vào đâu</h2>
             </div>
-            {chartData && chartData.bills.length > 0 ? (
-              <div className="card card-pad">
-                <CategoryDonut
-                  data={chartData.totals.byCategory}
-                  total={chartData.totals.spent}
-                />
-              </div>
-            ) : (
-              <div className="card card-pad muted">Kỳ này chưa có bill nào</div>
-            )}
+            <div className="card card-pad">
+              <CategoryDonut
+                data={data.totals.byCategory}
+                total={data.totals.spent}
+              />
+            </div>
           </section>
 
           {badges.some((b) => b.earned) && (
@@ -363,7 +366,9 @@ export default function Dashboard({
         </div>
 
         {loading && !data ? (
-          <div className="card card-pad muted">Đang tải…</div>
+          <div className="card">
+            <SkeletonLedgerRows count={PREVIEW_COUNT} />
+          </div>
         ) : preview.length > 0 ? (
           <div className="card">
             <ul className="ledger">

@@ -18,6 +18,7 @@ import GroupPicker from "@/components/GroupPicker";
 import PullToRefresh from "@/components/PullToRefresh";
 import BillSheet from "@/components/BillSheet";
 import { TrendSpark } from "@/components/Charts";
+import { Skeleton, SkeletonLedgerRows } from "@/components/Skeleton";
 import Avatar from "@/components/Avatar";
 import Mascot from "@/components/Mascot";
 import { categoryIcon } from "@/lib/avatars";
@@ -113,11 +114,6 @@ export default function BillHistory({
   useEffect(() => {
     void load();
   }, [load]);
-
-  const maxAbs = useMemo(
-    () => Math.max(1, ...(data?.balances ?? []).map((b) => Math.abs(b.net))),
-    [data]
-  );
 
   const usedCategories = useMemo(() => {
     const ids = new Set((data?.bills ?? []).map((b) => b.category));
@@ -259,11 +255,23 @@ export default function BillHistory({
         <div className="stats">
           <div className="stat">
             <p className="stat-label">Số bill</p>
-            <p className="num stat-value">{data?.totals.billCount ?? 0}</p>
+            <p className="num stat-value">
+              {loading && !data ? (
+                <Skeleton width={28} height={18} inline />
+              ) : (
+                data?.totals.billCount ?? 0
+              )}
+            </p>
           </div>
           <div className="stat">
             <p className="stat-label">Tổng chi</p>
-            <p className="num stat-value">{formatShort(data?.totals.spent ?? 0)}</p>
+            <p className="num stat-value">
+              {loading && !data ? (
+                <Skeleton width={70} height={18} inline />
+              ) : (
+                formatShort(data?.totals.spent ?? 0)
+              )}
+            </p>
           </div>
         </div>
         {data && data.trend.length >= 2 && (
@@ -276,32 +284,36 @@ export default function BillHistory({
         )}
       </div>
 
-      {usedCategories.length > 1 && (
-        <div className="chips" role="group" aria-label="Lọc theo hạng mục" style={{ marginBottom: 14 }}>
-          <button
-            type="button"
-            className="chip"
-            aria-pressed={category === "all"}
-            onClick={() => setCategory("all")}
-          >
-            Tất cả
-          </button>
-          {usedCategories.map((c) => (
-            <button
-              key={c.id}
-              type="button"
-              className="chip"
-              aria-pressed={category === c.id}
-              onClick={() => setCategory(c.id)}
-            >
-              {c.label}
-            </button>
-          ))}
-        </div>
-      )}
-
-      <div className="chips" role="group" aria-label="Lọc theo trạng thái" style={{ marginBottom: 14 }}>
-        {STATUS_FILTERS.map((f) => (
+      <div className="chips" role="group" aria-label="Lọc bill" style={{ marginBottom: 14 }}>
+        <button
+          type="button"
+          className="chip"
+          aria-pressed={category === "all" && status === "all"}
+          onClick={() => {
+            setCategory("all");
+            setStatus("all");
+          }}
+        >
+          Tất cả
+        </button>
+        {usedCategories.length > 1 && (
+          <>
+            <span className="chip-sep" aria-hidden="true" />
+            {usedCategories.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                className="chip"
+                aria-pressed={category === c.id}
+                onClick={() => setCategory(c.id)}
+              >
+                {c.label}
+              </button>
+            ))}
+          </>
+        )}
+        <span className="chip-sep" aria-hidden="true" />
+        {STATUS_FILTERS.filter((f) => f.key !== "all").map((f) => (
           <button
             key={f.key}
             type="button"
@@ -334,7 +346,9 @@ export default function BillHistory({
         </div>
 
         {loading && !data ? (
-          <div className="card card-pad muted">Đang tải…</div>
+          <div className="card">
+            <SkeletonLedgerRows count={5} />
+          </div>
         ) : filteredBills.length > 0 ? (
           <div className="stack">
             {billGroups.map((g) => (
@@ -420,59 +434,6 @@ export default function BillHistory({
           </div>
         )}
       </section>
-
-      {/* Dải số dư cả nhóm */}
-      {data && data.balances.length > 0 && (
-        <section className="section">
-          <div className="section-head">
-            <h2 className="section-title">Số dư từng người</h2>
-          </div>
-          <div className="card balances">
-            {data.balances
-              .slice()
-              .sort((a, b) => a.net - b.net)
-              .map((b) => {
-                const pct = (Math.abs(b.net) / maxAbs) * 50;
-                return (
-                  <div className="bal-row" key={b.userId}>
-                    <div className="bal-head">
-                      <Avatar avatarId={b.avatar} name={b.name} size={28} />
-                      <span className="bal-name">
-                        {b.name}
-                        {b.userId === user.id && (
-                          <span className="tag tag-blue" style={{ marginLeft: 6 }}>
-                            Bạn
-                          </span>
-                        )}
-                      </span>
-                      <span
-                        className={`num bal-net ${
-                          b.net < 0 ? "debt" : b.net > 0 ? "credit" : "muted"
-                        }`}
-                      >
-                        {b.net === 0
-                          ? "Cân bằng"
-                          : b.net < 0
-                            ? `nợ ${formatShort(-b.net)}`
-                            : `nhận ${formatShort(b.net)}`}
-                      </span>
-                    </div>
-                    <div className="bal-track">
-                      <div
-                        className={`bal-fill ${b.net < 0 ? "neg" : "pos"}`}
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                    <p className="faint tiny" style={{ margin: 0 }}>
-                      Đã ứng {formatShort(b.paid)} · phần phải trả{" "}
-                      {formatShort(b.owed)}
-                    </p>
-                  </div>
-                );
-              })}
-          </div>
-        </section>
-      )}
 
       {/* Lịch sử trả nợ */}
       {data && data.settlements.length > 0 && (

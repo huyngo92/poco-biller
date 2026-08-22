@@ -14,10 +14,12 @@ import CopyButton from "@/components/CopyButton";
 import CopyImageButton from "@/components/CopyImageButton";
 import Celebration from "@/components/Celebration";
 import ReminderToneSheet from "@/components/ReminderToneSheet";
+import { SkeletonLedgerRows } from "@/components/Skeleton";
+import Avatar from "@/components/Avatar";
 import {
   IconAlert,
-  IconArrowRight,
   IconBell,
+  IconChevron,
   IconOk,
   IconSettle,
   IconSpinner,
@@ -47,8 +49,27 @@ function generateGroupSummaryMessage(groupName: string, reminders: Reminder[]): 
   return `${quote}\n\nNhóm ${groupName} — sao kê nợ:\n${lines}\n\nTổng cộng: ${formatVnd(total)}`;
 }
 
-function ReminderCard({
+const VARIANT_AMOUNT_CLASS: Record<"mine" | "theirs" | "other", string> = {
+  mine: "debt",
+  theirs: "credit",
+  other: "",
+};
+
+const VARIANT_STATUS_TEXT: Record<"mine" | "theirs" | "other", string> = {
+  mine: "Bạn cần trả",
+  theirs: "Bạn sẽ nhận",
+  other: "",
+};
+
+function reminderTitle(r: Reminder, variant: "mine" | "theirs" | "other"): string {
+  if (variant === "mine") return `Trả cho ${r.creditor.user.name}`;
+  if (variant === "theirs") return `${r.debtor.name} cần trả bạn`;
+  return `${r.debtor.name} → ${r.creditor.user.name}`;
+}
+
+function ReminderRow({
   reminder,
+  variant,
   currentUserId,
   confirming,
   settling,
@@ -56,12 +77,14 @@ function ReminderCard({
   groupName,
 }: {
   reminder: Reminder;
+  variant: "mine" | "theirs" | "other";
   currentUserId: number;
   confirming: boolean;
   settling: boolean;
   onSettle: () => void;
   groupName: string;
 }) {
+  const [expanded, setExpanded] = useState(false);
   const [toneOpen, setToneOpen] = useState(false);
   const { debtor, creditor, amount } = reminder;
   const bankAccount = creditor.bankAccount;
@@ -81,94 +104,134 @@ function ReminderCard({
   // hai xác nhận là khoản này coi như đã trả (giống thoả thuận ngoài đời).
   const canConfirm = debtor.id === currentUserId || creditor.user.id === currentUserId;
 
+  // Gợi ý nhỏ dưới tên — giống nhãn hạng mục/số người dưới tên bill ở "Bill
+  // gần đây": chỉ hiện khi có thông tin thật (đã liên kết ngân hàng hay chưa),
+  // và chỉ với 2 phía trực tiếp liên quan (không hiện ở "Nợ chung trong nhóm").
+  const subtitle =
+    variant === "other"
+      ? null
+      : bankAccount?.bank
+        ? `Qua ${bankAccount.bank.shortName}`
+        : "Chưa liên kết ngân hàng";
+
   return (
-    <div className="card card-pad stack">
-      <div className="row">
-        <div className="stack" style={{ alignItems: "center", gap: 4 }}>
-          <span className="tag">{debtor.name}</span>
-          <span className="faint">Nợ</span>
-        </div>
-        <IconArrowRight size={ICON_SIZE.sm} className="faint" />
-        <div className="stack" style={{ alignItems: "center", gap: 4 }}>
-          <span className="tag tag-blue">{creditor.user.name}</span>
-          <span className="faint">Số tiền</span>
-        </div>
-        <span className="spacer" />
-        <strong className="num">{formatVnd(amount)}</strong>
-      </div>
-      {bankAccount?.bank?.logo && (
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            padding: "8px 0",
-          }}
-        >
-          <img
-            src={bankAccount.bank.logo}
-            alt={bankAccount.bank.shortName}
-            style={{ maxHeight: "30px", borderRadius: "4px" }}
-          />
-        </div>
-      )}
-      {qrUrl && (
-        <div
-          className="stack"
-          style={{ alignItems: "center", gap: 6, padding: "4px 0 8px" }}
-        >
-          <img
-            src={qrUrl}
-            alt={`Mã QR chuyển khoản cho ${creditor.user.name}`}
-            width={180}
-            height={180}
-            style={{ borderRadius: 8, border: "1px solid var(--rule)" }}
-          />
-          <div className="row-wrap" style={{ justifyContent: "center" }}>
-            <span className="faint tiny">Quét mã để chuyển khoản nhanh</span>
-          </div>
-          <CopyImageButton imageUrl={qrUrl} label="Copy ảnh QR" />
-        </div>
-      )}
+    <>
       <button
         type="button"
-        className="btn btn-block"
-        onClick={() => setToneOpen(true)}
+        className="entry"
+        aria-expanded={expanded}
+        onClick={() => setExpanded((v) => !v)}
       >
-        <IconBell size={ICON_SIZE.sm} /> Gửi lời nhắc
-      </button>
-      {toneOpen && (
-        <ReminderToneSheet
-          reminder={reminder}
-          groupName={groupName}
-          onClose={() => setToneOpen(false)}
-        />
-      )}
-      {canConfirm && (
-        <button
-          type="button"
-          className={`btn btn-block ${confirming ? "" : "btn-primary"}`}
-          disabled={settling}
-          onClick={onSettle}
-        >
-          {settling ? (
-            <>
-              <IconSpinner size={ICON_SIZE.sm} /> Đang ghi nhận...
-            </>
-          ) : confirming ? (
-            <>
-              <IconOk size={ICON_SIZE.sm} /> Bấm lại để xác nhận đã trả
-            </>
-          ) : (
-            <>
-              <IconSettle size={ICON_SIZE.sm} />{" "}
-              {debtor.id === currentUserId
-                ? "Xác nhận đã chuyển khoản"
-                : "Xác nhận đã nhận tiền"}
-            </>
+        {variant === "other" ? (
+          <span className="avatar-stack">
+            <Avatar name={debtor.name} size={24} />
+            <Avatar name={creditor.user.name} size={24} />
+          </span>
+        ) : (
+          <Avatar name={variant === "mine" ? creditor.user.name : debtor.name} size={32} />
+        )}
+        <span className="entry-main">
+          <span className="entry-title">{reminderTitle(reminder, variant)}</span>
+          {subtitle && (
+            <span className="faint tiny" style={{ display: "block", marginTop: 2 }}>
+              {subtitle}
+            </span>
           )}
-        </button>
+        </span>
+        <span className="entry-amount">
+          <span className="num">{formatVnd(amount)}</span>
+          {VARIANT_STATUS_TEXT[variant] && (
+            <span
+              className={`tiny num ${VARIANT_AMOUNT_CLASS[variant]}`}
+              style={{ display: "block" }}
+            >
+              {VARIANT_STATUS_TEXT[variant]}
+            </span>
+          )}
+        </span>
+        <IconChevron
+          size={ICON_SIZE.sm}
+          className="entry-chevron"
+          style={{ transform: expanded ? "rotate(90deg)" : undefined }}
+        />
+      </button>
+      {expanded && (
+        <div className="stack" style={{ padding: "0 16px 16px", gap: 10 }}>
+          {bankAccount?.bank?.logo && (
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                padding: "8px 0",
+              }}
+            >
+              <img
+                src={bankAccount.bank.logo}
+                alt={bankAccount.bank.shortName}
+                style={{ maxHeight: "30px", borderRadius: "4px" }}
+              />
+            </div>
+          )}
+          {qrUrl && (
+            <div
+              className="stack"
+              style={{ alignItems: "center", gap: 6, padding: "4px 0 8px" }}
+            >
+              <img
+                src={qrUrl}
+                alt={`Mã QR chuyển khoản cho ${creditor.user.name}`}
+                width={180}
+                height={180}
+                style={{ borderRadius: 8, border: "1px solid var(--rule)" }}
+              />
+              <div className="row-wrap" style={{ justifyContent: "center" }}>
+                <span className="faint tiny">Quét mã để chuyển khoản nhanh</span>
+              </div>
+              <CopyImageButton imageUrl={qrUrl} label="Copy ảnh QR" />
+            </div>
+          )}
+          <button
+            type="button"
+            className="btn btn-block"
+            onClick={() => setToneOpen(true)}
+          >
+            <IconBell size={ICON_SIZE.sm} /> Gửi lời nhắc
+          </button>
+          {toneOpen && (
+            <ReminderToneSheet
+              reminder={reminder}
+              groupName={groupName}
+              onClose={() => setToneOpen(false)}
+            />
+          )}
+          {canConfirm && (
+            <button
+              type="button"
+              className={`btn btn-block ${confirming ? "" : "btn-primary"}`}
+              disabled={settling}
+              onClick={onSettle}
+            >
+              {settling ? (
+                <>
+                  <IconSpinner size={ICON_SIZE.sm} /> Đang ghi nhận...
+                </>
+              ) : confirming ? (
+                <>
+                  <IconOk size={ICON_SIZE.sm} /> Bấm lại để xác nhận đã trả
+                </>
+              ) : (
+                <>
+                  <IconSettle size={ICON_SIZE.sm} />{" "}
+                  {debtor.id === currentUserId
+                    ? "Xác nhận đã chuyển khoản"
+                    : "Xác nhận đã nhận tiền"}
+                </>
+              )}
+            </button>
+          )}
+        </div>
       )}
-    </div>
+    </>
   );
 }
 
@@ -308,7 +371,9 @@ export default function Reminders({
       )}
 
       {loading ? (
-        <div className="empty">Đang tính toán...</div>
+        <div className="card">
+          <SkeletonLedgerRows count={3} />
+        </div>
       ) : reminders.length === 0 ? (
         <Celebration
           title="Sòng phẳng!"
@@ -322,61 +387,63 @@ export default function Reminders({
           }
         />
       ) : (
-        <div className="stack" style={{ gap: 28 }}>
-          {myDebts.length > 0 && (
-            <div className="stack" style={{ gap: 10 }}>
-              <h2 className="section-title">Bạn cần trả</h2>
-              <div className="stack" style={{ gap: 10 }}>
+        <div className="card">
+          <ul className="ledger">
+            {myDebts.length > 0 && (
+              <>
+                <li className="ledger-label">Bạn cần trả</li>
                 {myDebts.map((r, i) => (
-                  <ReminderCard
-                    key={`my-debt-${i}`}
-                    reminder={r}
-                    currentUserId={user.id}
-                    groupName={group?.name ?? ""}
-                    confirming={confirmingKey === reminderKey(r)}
-                    settling={settlingKey === reminderKey(r)}
-                    onSettle={() => handleSettle(r)}
-                  />
+                  <li key={`my-debt-${i}`}>
+                    <ReminderRow
+                      variant="mine"
+                      reminder={r}
+                      currentUserId={user.id}
+                      groupName={group?.name ?? ""}
+                      confirming={confirmingKey === reminderKey(r)}
+                      settling={settlingKey === reminderKey(r)}
+                      onSettle={() => handleSettle(r)}
+                    />
+                  </li>
                 ))}
-              </div>
-            </div>
-          )}
-          {debtsToMe.length > 0 && (
-            <div className="stack" style={{ gap: 10 }}>
-              <h2 className="section-title">Người khác cần trả bạn</h2>
-              <div className="stack" style={{ gap: 10 }}>
+              </>
+            )}
+            {debtsToMe.length > 0 && (
+              <>
+                <li className="ledger-label">Người khác cần trả bạn</li>
                 {debtsToMe.map((r, i) => (
-                  <ReminderCard
-                    key={`to-me-${i}`}
-                    reminder={r}
-                    currentUserId={user.id}
-                    groupName={group?.name ?? ""}
-                    confirming={confirmingKey === reminderKey(r)}
-                    settling={settlingKey === reminderKey(r)}
-                    onSettle={() => handleSettle(r)}
-                  />
+                  <li key={`to-me-${i}`}>
+                    <ReminderRow
+                      variant="theirs"
+                      reminder={r}
+                      currentUserId={user.id}
+                      groupName={group?.name ?? ""}
+                      confirming={confirmingKey === reminderKey(r)}
+                      settling={settlingKey === reminderKey(r)}
+                      onSettle={() => handleSettle(r)}
+                    />
+                  </li>
                 ))}
-              </div>
-            </div>
-          )}
-          {otherDebts.length > 0 && (
-            <div className="stack" style={{ gap: 10 }}>
-              <h2 className="section-title">Nợ chung trong nhóm</h2>
-              <div className="stack" style={{ gap: 10 }}>
+              </>
+            )}
+            {otherDebts.length > 0 && (
+              <>
+                <li className="ledger-label">Nợ chung trong nhóm</li>
                 {otherDebts.map((r, i) => (
-                  <ReminderCard
-                    key={`other-${i}`}
-                    reminder={r}
-                    currentUserId={user.id}
-                    groupName={group?.name ?? ""}
-                    confirming={confirmingKey === reminderKey(r)}
-                    settling={settlingKey === reminderKey(r)}
-                    onSettle={() => handleSettle(r)}
-                  />
+                  <li key={`other-${i}`}>
+                    <ReminderRow
+                      variant="other"
+                      reminder={r}
+                      currentUserId={user.id}
+                      groupName={group?.name ?? ""}
+                      confirming={confirmingKey === reminderKey(r)}
+                      settling={settlingKey === reminderKey(r)}
+                      onSettle={() => handleSettle(r)}
+                    />
+                  </li>
                 ))}
-              </div>
-            </div>
-          )}
+              </>
+            )}
+          </ul>
         </div>
       )}
     </div>

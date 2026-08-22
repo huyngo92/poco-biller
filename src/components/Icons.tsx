@@ -45,6 +45,7 @@ import {
   Shield,
   SlidersHorizontal,
   Sparkles,
+  Square,
   SquarePen,
   Trash2,
   User,
@@ -133,6 +134,8 @@ export const IconSparkles = wrap(Sparkles, "IconSparkles");
 export const IconSearch = wrap(Search, "IconSearch");
 /** Nhập bằng giọng nói — SF: mic */
 export const IconMic = wrap(Mic, "IconMic");
+/** Đang nghe, bấm để dừng — SF: stop.fill */
+export const IconStop = wrap(Square, "IconStop");
 /** Gửi tin nhắn AI — SF: paperplane */
 export const IconSend = wrap(Send, "IconSend");
 /** Đèn flash camera đang mở — SF: bolt.fill */
