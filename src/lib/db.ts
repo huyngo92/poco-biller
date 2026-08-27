@@ -101,6 +101,23 @@ function migrate(db: Database.Database) {
   }
 }
 
+/* Migration: tạo bảng push_tokens nếu chưa có (chạy sau SCHEMA đã exec). */
+function migratePushTokens(db: Database.Database) {
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS push_tokens (
+        token      TEXT PRIMARY KEY,
+        user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      CREATE INDEX IF NOT EXISTS idx_push_tokens_user ON push_tokens(user_id);
+    `);
+  } catch (e) {
+    console.warn("[poco-biller] Không tạo được bảng push_tokens:", e);
+  }
+}
+
 export function dbFilePath(): string {
   return path.resolve(process.env.DATABASE_PATH || "./data/poco.db");
 }
@@ -114,6 +131,7 @@ export function getDb(): Database.Database {
   const db = new Database(dbPath);
   db.exec(SCHEMA);
   migrate(db);
+  migratePushTokens(db);
   instance = db;
 
   // Bật scheduler backup ở đây thay vì trong instrumentation.ts.

@@ -937,6 +937,7 @@ h2 {
 }
 
 .entry-title {
+  display: block;
   font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;

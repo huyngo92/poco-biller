@@ -1,7 +1,8 @@
 import { HttpError, requireUser } from "@/lib/auth";
-import { assertMember, createBill } from "@/lib/queries";
+import { assertMember, createBill, listPushTokensForGroup } from "@/lib/queries";
 import type { ShareInput } from "@/lib/queries";
 import { dateStr, fail, num, ok, str } from "@/lib/api";
+import { sendPushToMany } from "@/lib/push";
 import type { SplitMode } from "@/lib/types";
 
 const MODES: SplitMode[] = ["equal", "shares", "percent", "exact"];
@@ -14,6 +15,7 @@ export async function POST(req: Request) {
     const groupId = num(body.groupId, "groupId");
     assertMember(groupId, user.id);
 
+    const title = str(body.title, "tên bill", 200);
     const total = Math.round(num(body.total, "tổng tiền"));
     if (total <= 0) throw new HttpError(400, "Tổng tiền phải lớn hơn 0.");
 
@@ -34,7 +36,7 @@ export async function POST(req: Request) {
     const billId = createBill(
       {
         groupId,
-        title: str(body.title, "tên bill", 200),
+        title,
         category: typeof body.category === "string" ? body.category : "khac",
         total,
         paidBy: num(body.paidBy, "người ứng tiền"),
@@ -45,6 +47,16 @@ export async function POST(req: Request) {
         shares,
       },
       user.id
+    );
+
+    // Push cho các thành viên khác trong nhóm khi có bill mới.
+    void sendPushToMany(
+      listPushTokensForGroup(groupId, user.id),
+      {
+        title: "Bill mới",
+        body: `${user.name} thêm bill "${title}" ${total.toLocaleString("vi-VN")} ₫`,
+        link: "/",
+      }
     );
 
     return ok({ billId }, 201);

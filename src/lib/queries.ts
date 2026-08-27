@@ -11,6 +11,49 @@ import type {
   SplitMode,
 } from "./types";
 
+/* ---------- Push notification ---------- */
+
+/** Lưu token FCM của browser hiện tại, thay token cũ nếu user đổi thiết bị. */
+export function savePushToken(userId: number, token: string): void {
+  const value = token.trim();
+  if (!value || value.length > 4096)
+    throw new HttpError(400, "FCM token không hợp lệ.");
+  getDb()
+    .prepare(
+      `INSERT INTO push_tokens (token, user_id, updated_at)
+       VALUES (?, ?, datetime('now'))
+       ON CONFLICT(token) DO UPDATE SET user_id = excluded.user_id, updated_at = excluded.updated_at`
+    )
+    .run(value, userId);
+}
+
+export function removePushToken(userId: number, token: string): void {
+  getDb().prepare("DELETE FROM push_tokens WHERE user_id = ? AND token = ?").run(userId, token);
+}
+
+/** Lấy token của toàn bộ thành viên nhóm, optionally loại trừ người tạo event. */
+export function listPushTokensForGroup(groupId: number, exceptUserId?: number): string[] {
+  const params: (number | undefined)[] = [groupId];
+  let sql = `
+    SELECT DISTINCT p.token FROM push_tokens p
+    JOIN memberships m ON m.user_id = p.user_id
+    WHERE m.group_id = ?`;
+  if (exceptUserId !== undefined) {
+    sql += " AND p.user_id <> ?";
+    params.push(exceptUserId);
+  }
+  return (getDb().prepare(sql).all(...params) as { token: string }[]).map((r) => r.token);
+}
+
+/** Lấy token của một người dùng — dùng khi thông báo nhắm riêng một người. */
+export function listPushTokensForUser(userId: number): string[] {
+  return (
+    getDb()
+      .prepare("SELECT token FROM push_tokens WHERE user_id = ?")
+      .all(userId) as { token: string }[]
+  ).map((r) => r.token);
+}
+
 /* ---------- Nhóm & thành viên ---------- */
 
 export function makeInviteCode(): string {

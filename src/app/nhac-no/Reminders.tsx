@@ -37,7 +37,7 @@ function generateGroupSummaryMessage(groupName: string, reminders: Reminder[]): 
   const quote = pickQuote(GROUP_SUMMARY_QUOTES);
 
   if (reminders.length === 0) {
-    return `${quote}\n\nNhóm ${groupName} — sao kê tháng này sạch bong, không ai nợ ai cả 🎉`;
+    return `${quote}\n\nNhóm ${groupName} — sao kê tháng này sạch bong, không ai nợ ai cả.`;
   }
 
   const lines = reminders

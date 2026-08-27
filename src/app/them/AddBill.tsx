@@ -49,6 +49,7 @@ type SpeechRecognitionLike = {
   onerror: ((e: SpeechRecognitionErrorEventLike) => void) | null;
   start: () => void;
   stop: () => void;
+  abort?: () => void;
 };
 
 /** Số cột của waveform hiển thị khi đang nghe — đủ dày trên card rộng ~530px. */
@@ -312,16 +313,39 @@ export default function AddBill({
     }
   }
 
+  /** Hủy hẳn instance nhận diện của phiên trước: gỡ handler để sự kiện đến
+   *  muộn không ghi đè trạng thái phiên mới, rồi dừng/abort. Đây là mấu chốt
+   *  để lần bấm ghi thứ hai trở đi vẫn hoạt động. */
+  function disposeRecognition() {
+    const rec = recognitionRef.current;
+    if (!rec) return;
+    rec.onresult = null;
+    rec.onend = null;
+    rec.onerror = null;
+    try {
+      if (rec.abort) rec.abort();
+      else rec.stop();
+    } catch {
+      // Instance chưa từng start hoặc đã dừng — bỏ qua.
+    }
+    recognitionRef.current = null;
+  }
+
   function toggleMic() {
     const SpeechRecognitionCtor = getSpeechRecognition();
     if (!SpeechRecognitionCtor) return;
 
     if (listening) {
-      recognitionRef.current?.stop();
+      stopListening();
       return;
     }
 
     setError("");
+    // Dọn sạch phiên trước trước khi mở phiên mới — tránh start() ném
+    // InvalidStateError khi engine chưa nhả, và tránh onend/onerror đến muộn.
+    disposeRecognition();
+    stopWaveform();
+
     chatBaseRef.current = chatInput ? `${chatInput} ` : "";
     finalTranscriptRef.current = "";
 
@@ -348,7 +372,17 @@ export default function AddBill({
       setError(speechErrorMessage(e.error));
     };
     recognitionRef.current = recognition;
-    recognition.start();
+
+    try {
+      recognition.start();
+    } catch {
+      // Engine chưa sẵn sàng (thường do phiên trước chưa nhả). Dọn rồi báo lại.
+      disposeRecognition();
+      stopWaveform();
+      setListening(false);
+      setError("Không khởi động được micro, thử bấm lại nhé.");
+      return;
+    }
     setListening(true);
     void startWaveform();
   }

@@ -29,6 +29,7 @@ import {
   IconUsers,
   ICON_SIZE,
 } from "@/components/Icons";
+import NotificationSettings from "@/components/NotificationSettings";
 
 type UserBankAccount = {
   bankId: string;
@@ -462,15 +463,16 @@ export default function Settings({
                 </li>
               )}
               <li>
-                <div className="list-row" style={{ cursor: "default", opacity: 0.6 }}>
+                <div className="list-row" style={{ cursor: "default" }}>
                   <span className="list-row-icon">
                     <IconOk size={ICON_SIZE.md} />
                   </span>
-                  <span className="list-row-main">Thông báo</span>
-                  <span className="tag">Sắp có</span>
+                  <span className="list-row-main">Thông báo đẩy</span>
                 </div>
               </li>
             </ul>
+
+            <NotificationSettings />
 
             {panel === "backup" && group && (
               <div className="card-pad row-wrap" style={{ borderTop: "1px solid var(--rule)" }}>

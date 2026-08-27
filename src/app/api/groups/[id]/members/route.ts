@@ -1,8 +1,9 @@
 import { getDb } from "@/lib/db";
 import { HttpError, requireUser } from "@/lib/auth";
-import { assertMember, listMembers, removeMember } from "@/lib/queries";
+import { assertMember, listMembers, removeMember, listPushTokensForGroup } from "@/lib/queries";
 import { fail, num, ok, str } from "@/lib/api";
 import { hashPassword } from "@/lib/auth";
+import { sendPushToMany } from "@/lib/push";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -55,6 +56,16 @@ export async function POST(req: Request, { params }: Ctx) {
     db.prepare(
       "INSERT OR IGNORE INTO memberships (group_id, user_id, role) VALUES (?, ?, 'member')"
     ).run(groupId, userId);
+
+    // Báo các thành viên khác trong nhóm có người mới tham gia.
+    void sendPushToMany(
+      listPushTokensForGroup(groupId, user.id),
+      {
+        title: "Thành viên mới",
+        body: `${name} vừa tham gia nhóm`,
+        link: "/cai-dat/thanh-vien",
+      }
+    );
 
     return ok(
       {

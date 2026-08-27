@@ -29,7 +29,7 @@ function qrMessage(r: Reminder, groupName: string): string {
   )} trong nhóm ${groupName || "mình"} nhé.`;
   const acc = r.creditor.bankAccount;
   if (acc) {
-    msg += `\n\n💳 Chuyển khoản:`;
+    msg += `\n\nChuyển khoản:`;
     if (acc.bank) msg += `\n• Ngân hàng: ${acc.bank.shortName}`;
     msg += `\n• Số tài khoản: ${acc.accountNumber}`;
     msg += `\n• Chủ tài khoản: ${acc.accountName}`;
