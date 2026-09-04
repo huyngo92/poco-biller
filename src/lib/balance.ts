@@ -27,10 +27,9 @@ export function computeBalances(
   }
 
   // Settlement: fromUserId = người trả, toUserId = người nhận.
-  // Người trả coi như đã "ứng" thêm khoản này → nợ giảm về 0.
-  // Người nhận đã lấy lại phần mình ứng → phần được nhận giảm tương ứng.
+  // Giảm nợ của người trả và giảm khoản được nhận của người nhận.
   for (const s of settlements) {
-    bump(paid, s.fromUserId, s.amount);
+    bump(owed, s.fromUserId, -s.amount);
     bump(paid, s.toUserId, -s.amount);
   }
 

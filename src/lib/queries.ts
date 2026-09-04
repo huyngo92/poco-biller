@@ -11,6 +11,60 @@ import type {
   SplitMode,
 } from "./types";
 
+export function listAllGroups(): Group[] {
+  return getDb()
+    .prepare(`SELECT id, name, invite_code AS inviteCode FROM groups ORDER BY created_at DESC`)
+    .all() as Group[];
+}
+
+export function updateGroupName(groupId: number, name: string): void {
+  getDb()
+    .prepare(`UPDATE groups SET name = ? WHERE id = ?`)
+    .run(name, groupId);
+}
+
+export function getSystemStats() {
+  const db = getDb();
+
+  const totalGroupsRow = db.prepare(`SELECT COUNT(*) as count FROM groups`).get() as { count: number };
+  const totalGroups = totalGroupsRow.count;
+
+  const groupMemberCounts = db.prepare(
+    `SELECT g.id, g.name, COUNT(m.user_id) as memberCount
+     FROM groups g
+     LEFT JOIN memberships m ON g.id = m.group_id
+     GROUP BY g.id`
+  ).all() as { id: number; name: string; memberCount: number }[];
+
+  const activity = db.prepare(
+    `SELECT g.id, COUNT(b.id) as billCount, SUM(b.total) as totalSpent, MAX(b.spent_on) as lastActivity
+     FROM groups g
+     LEFT JOIN bills b ON g.id = b.group_id
+     GROUP BY g.id`
+  ).all() as { id: number; billCount: number; totalSpent: number; lastActivity: string | null }[];
+
+  const billTrend = db.prepare(
+    `SELECT date(spent_on) as date, COUNT(*) as count
+     FROM bills
+     GROUP BY date(spent_on)
+     ORDER BY date ASC`
+  ).all() as { date: string; count: number }[];
+
+  return {
+    totalGroups,
+    groups: groupMemberCounts.map(gc => {
+      const act = activity.find(a => a.id === gc.id);
+      return {
+        ...gc,
+        billCount: act?.billCount ?? 0,
+        totalSpent: act?.totalSpent ?? 0,
+        lastActivity: act?.lastActivity ?? null
+      };
+    }),
+    billTrend
+  };
+}
+
 /* ---------- Push notification ---------- */
 
 /** Lưu token FCM của browser hiện tại, thay token cũ nếu user đổi thiết bị. */

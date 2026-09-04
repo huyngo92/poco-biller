@@ -30,6 +30,8 @@ export function sepayQrUrl(args: {
   if (amount && amount > 0) params.set("amount", String(Math.round(amount)));
   if (description && description.trim())
     params.set("des", description.trim().slice(0, 100));
+  params.set("template", "compact");
+  params.set("showinfo", "true");
 
-  return `https://qr.sepay.vn/img?${params.toString()}`;
+  return `https://vietqr.app/img?${params.toString()}`;
 }
