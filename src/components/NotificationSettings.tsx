@@ -56,10 +56,12 @@ export default function NotificationSettings() {
 
         <div
           className={`toggle ${enabled ? "active" : ""}`}
-          onClick={() => void handleEnable()}
+          onClick={async () => {
+            if (status === "loading") return;
+            await handleEnable();
+          }}
           style={{
             cursor: "pointer",
-            // Inline styles for toggle if CSS is not yet updated
             display: "inline-flex",
             alignItems: "center",
             width: 44,
@@ -67,7 +69,9 @@ export default function NotificationSettings() {
             backgroundColor: enabled ? "var(--tint-strong)" : "var(--fill-quaternary)",
             borderRadius: 12,
             position: "relative",
-            transition: "background-color 0.2s"
+            transition: "background-color 0.2s",
+            userSelect: "none",
+            WebkitTapHighlightColor: "transparent"
           }}
         >
           <div style={{
@@ -78,7 +82,8 @@ export default function NotificationSettings() {
             position: "absolute",
             left: enabled ? 22 : 2,
             transition: "left 0.2s",
-            boxShadow: "0 1px 3px rgba(0,0,0,0.2)"
+            boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+            pointerEvents: "none"
           }} />
         </div>
       </div>
