@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import AuthProvider from "@/lib/AuthProvider";
 import ThemeProvider from "@/lib/ThemeProvider";
+import PushRegistration from "@/components/PushRegistration";
 
 export const metadata: Metadata = {
   title: "Poco Biller — chia tiền nhóm",
@@ -14,7 +15,6 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 5,
   viewportFit: "cover",
-  // Thanh trạng thái hoà vào nền grouped của app ở cả hai chế độ
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#f2f2f7" },
     { media: "(prefers-color-scheme: dark)", color: "#000000" },
@@ -31,6 +31,7 @@ export default function RootLayout({
       <body>
         <AuthProvider>
           <ThemeProvider>
+            <PushRegistration />
             {children}
           </ThemeProvider>
         </AuthProvider>

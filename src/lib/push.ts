@@ -39,33 +39,42 @@ function serviceAccount(): object | null {
 /** Khởi tạo firebase-admin một lần. Trả về app, hoặc null nếu chưa cấu hình. */
 async function getAdminApp() {
   if (initialized) {
-    // Since initialized is true, we can just perform the imports again
-    // or better yet, the app is already created in the firebase-admin internal state.
-    const { getApp } = await import("firebase-admin/app");
-    const { getMessaging } = await import("firebase-admin/messaging");
-    const admin = getApp();
-    return { admin, messaging: getMessaging(admin) };
+    try {
+      const { getApp } = await import("firebase-admin/app");
+      const { getMessaging } = await import("firebase-admin/messaging");
+      const admin = getApp();
+      return { admin, messaging: getMessaging(admin) };
+    } catch (e) {
+      initialized = false; // Reset nếu app bị hỏng
+    }
   }
 
   const cred = serviceAccount();
   if (!cred) {
-    initError =
-      "Chưa cấu hình Firebase: cần FIREBASE_SERVICE_ACCOUNT_JSON hoặc FIREBASE_SERVICE_ACCOUNT_PATH.";
+    initError = "Chưa cấu hình Firebase: cần FIREBASE_SERVICE_ACCOUNT_JSON hoặc FIREBASE_SERVICE_ACCOUNT_PATH.";
     initialized = true;
     return null;
   }
 
-  const { cert, getApps, getApp, initializeApp } = await import("firebase-admin/app");
-  const { getMessaging } = await import("firebase-admin/messaging");
+  try {
+    const { cert, getApps, getApp, initializeApp } = await import("firebase-admin/app");
+    const { getMessaging } = await import("firebase-admin/messaging");
 
-  let admin;
-  if (getApps().length > 0) {
-    admin = getApp();
-  } else {
-    admin = initializeApp({ credential: cert(cred as any) });
+    let admin;
+    const existingApps = getApps();
+    if (existingApps.length > 0) {
+      admin = getApp();
+    } else {
+      // Đảm bảo cred được parse đúng format cho cert()
+      admin = initializeApp({ credential: cert(cred as any) });
+    }
+    initialized = true;
+    return { admin, messaging: getMessaging(admin) };
+  } catch (e) {
+    console.error("[poco-biller] Lỗi khởi tạo Firebase Admin:", e);
+    initError = e instanceof Error ? e.message : String(e);
+    return null;
   }
-  initialized = true;
-  return { admin, messaging: getMessaging(admin) };
 }
 
 /** Gửi push tới một token. Lỗi sẽ được ghi log và nuốt — không làm hỏng request chính. */
@@ -74,15 +83,15 @@ export async function sendPush(token: string, payload: PushPayload): Promise<voi
     const app = await getAdminApp();
     if (!app) return;
 
+    // Cấu trúc tối giản tuyệt đối theo chuẩn Admin SDK cho Web
     await app.messaging.send({
       token,
-      notification: { title: payload.title, body: payload.body ?? "" },
-      webpush: {
-        fcmOptions: { link: payload.link },
+      notification: {
+        title: payload.title,
+        body: payload.body ?? "",
       },
     });
   } catch (e) {
-    // Token có thể đã hết hạn / bị thu hồi — không nên làm fail request chính.
     console.warn("[poco-biller] Gửi push thất bại:", e instanceof Error ? e.message : e);
   }
 }
@@ -92,18 +101,27 @@ export async function sendPushToMany(tokens: string[], payload: PushPayload): Pr
   const app = await getAdminApp();
   if (!app || tokens.length === 0) return;
 
-  // Loại bỏ token rỗng và trùng lặp.
   const unique = [...new Set(tokens.filter(Boolean))];
   if (unique.length === 0) return;
 
+  // Thay vì dùng sendEachForMulticast (đôi khi không ổn định trên Web),
+  // ta gửi từng tin nhắn độc lập để đảm bảo mỗi tin đều đi theo chuẩn send()
   try {
-    await app.messaging.sendEachForMulticast({
-      tokens: unique,
-      notification: { title: payload.title, body: payload.body ?? "" },
-      webpush: { fcmOptions: { link: payload.link } },
-    });
+    await Promise.all(
+      unique.map(token =>
+        app.messaging.send({
+          token,
+          notification: {
+            title: payload.title,
+            body: payload.body ?? "",
+          },
+        }).catch(e => {
+          console.warn(`[poco-biller] Gửi push tới ${token} thất bại:`, e);
+        })
+      )
+    );
   } catch (e) {
-    console.warn("[poco-biller] Gửi push hàng loạt thất bại:", e instanceof Error ? e.message : e);
+    console.warn("[poco-biller] Gửi push hàng loạt gặp lỗi nghiêm trọng:", e instanceof Error ? e.message : e);
   }
 }
 

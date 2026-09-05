@@ -503,14 +503,6 @@ export default function Settings({
                   </button>
                 </li>
               )}
-              <li>
-                <div className="list-row" style={{ cursor: "default" }}>
-                  <span className="list-row-icon">
-                    <IconOk size={ICON_SIZE.md} />
-                  </span>
-                  <span className="list-row-main">Thông báo đẩy</span>
-                </div>
-              </li>
             </ul>
 
             <NotificationSettings />

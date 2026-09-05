@@ -22,11 +22,11 @@ export function usePushNotifications(onForeground?: (title: string, body: string
   const [status, setStatus] = useState<PushStatus>("loading");
   const [enabled, setEnabled] = useState(false);
 
-  // Đăng ký service worker từ route (inject config từ env).
+  // Đăng ký service worker từ file tĩnh.
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
     navigator.serviceWorker
-      .register("/firebase-messaging-sw")
+      .register("/firebase-messaging-sw.js")
       .catch((e) => console.warn("[poco-biller] SW registration failed:", e));
   }, []);
 
@@ -45,6 +45,26 @@ export function usePushNotifications(onForeground?: (title: string, body: string
       return false;
     }
   }, []);
+
+  // Tự động kiểm tra trạng thái khi load.
+  useEffect(() => {
+    async function checkStatus() {
+      if (authStatus !== "authenticated") return;
+
+      if (Notification.permission === "granted") {
+        const token = await requestNotificationPermission();
+        if (token) {
+          await saveToken(token);
+          setStatus("granted");
+        }
+      } else if (Notification.permission === "denied") {
+        setStatus("denied");
+      } else {
+        setStatus("loading");
+      }
+    }
+    void checkStatus();
+  }, [authStatus, saveToken]);
 
   const enable = useCallback(async () => {
     if (authStatus !== "authenticated") return false;

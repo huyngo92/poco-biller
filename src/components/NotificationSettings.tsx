@@ -43,21 +43,44 @@ export default function NotificationSettings() {
 
   return (
     <div className="card-pad stack" style={{ borderTop: "1px solid var(--rule)" }}>
-      <div className="row">
-        <span className="list-row-icon"><IconBell size={ICON_SIZE.md} /></span>
-        <span className="list-row-main">
-          Thông báo đẩy
-          <span className="faint" style={{ display: "block", fontWeight: 400 }}>
-            {enabled ? "Đang bật trên thiết bị này" : "Nhận tin khi nhóm có hoạt động mới"}
+      <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+        <div className="row" style={{ gap: 12 }}>
+          <span className="list-row-icon"><IconBell size={ICON_SIZE.md} /></span>
+          <span className="list-row-main">
+            Thông báo đẩy
+            <span className="faint" style={{ display: "block", fontWeight: 400 }}>
+              {enabled ? "Đang bật trên thiết bị này" : "Nhận tin khi nhóm có hoạt động mới"}
+            </span>
           </span>
-        </span>
-        {enabled ? (
-          <span className="tag tag-blue"><IconOk size={14} /> Đã bật</span>
-        ) : (
-          <button type="button" className="btn btn-primary btn-sm" onClick={() => void handleEnable()}>
-            {status === "loading" ? <IconSpinner size={ICON_SIZE.sm} /> : "Bật"}
-          </button>
-        )}
+        </div>
+
+        <div
+          className={`toggle ${enabled ? "active" : ""}`}
+          onClick={() => void handleEnable()}
+          style={{
+            cursor: "pointer",
+            // Inline styles for toggle if CSS is not yet updated
+            display: "inline-flex",
+            alignItems: "center",
+            width: 44,
+            height: 24,
+            backgroundColor: enabled ? "var(--tint-strong)" : "var(--fill-quaternary)",
+            borderRadius: 12,
+            position: "relative",
+            transition: "background-color 0.2s"
+          }}
+        >
+          <div style={{
+            width: 20,
+            height: 20,
+            backgroundColor: "white",
+            borderRadius: "50%",
+            position: "absolute",
+            left: enabled ? 22 : 2,
+            transition: "left 0.2s",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.2)"
+          }} />
+        </div>
       </div>
       {notice && <p className="notice" role="status"><IconOk size={ICON_SIZE.sm} />{notice}</p>}
       {error && <p className="error" role="alert"><IconAlert size={ICON_SIZE.sm} />{error}</p>}

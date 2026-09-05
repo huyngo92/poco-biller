@@ -70,9 +70,15 @@ export async function requestNotificationPermission(): Promise<string | null> {
   if (permission !== "granted") return null;
 
   try {
-    // Dùng đúng service worker do app serve (config Firebase được inject từ env).
+    // Đảm bảo SW đã được đăng ký và sẵn sàng
     const registration = await navigator.serviceWorker.ready;
-    const token = await getToken(messaging, { vapidKey, serviceWorkerRegistration: registration });
+
+    // Lấy token. Lưu ý: getToken sẽ sử dụng SW hiện tại của browser.
+    const token = await getToken(messaging, {
+      vapidKey,
+      serviceWorkerRegistration: registration
+    });
+
     return token;
   } catch (err) {
     console.error("[poco-biller] Lỗi lấy FCM token:", err);
