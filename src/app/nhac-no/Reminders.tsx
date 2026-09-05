@@ -23,6 +23,7 @@ import {
   IconOk,
   IconSettle,
   IconSpinner,
+  IconShare,
   ICON_SIZE,
 } from "@/components/Icons";
 
@@ -180,23 +181,34 @@ function ReminderRow({
               <img
                 src={qrUrl}
                 alt={`Mã QR chuyển khoản cho ${creditor.user.name}`}
-                width={180}
-                height={180}
-                style={{ borderRadius: 8, border: "1px solid var(--rule)" }}
+                width={240}
+                height={240}
+                style={{ borderRadius: 8, border: "1px solid var(--rule)", objectFit: "contain" }}
               />
-              <div className="row-wrap" style={{ justifyContent: "center" }}>
-                <span className="faint tiny">Quét mã để chuyển khoản nhanh</span>
+              <div className="row-wrap" style={{ justifyContent: "center", gap: 8 }}>
+                <button
+                  type="button"
+                  className="btn btn-icon"
+                  onClick={() => setToneOpen(true)}
+                  aria-label="Gửi lời nhắc"
+                >
+                  <IconBell size={ICON_SIZE.md} />
+                </button>
+                <CopyButton
+                  className="btn btn-icon"
+                  aria-label="Chia sẻ thông tin nợ"
+                  text={`Nhắc nợ: ${debtor.name} trả ${creditor.user.name}\nSố tiền: ${formatVnd(amount)}\n\n${bankAccount?.bank
+                    ? `Chuyển khoản qua ${bankAccount.bank.shortName}:\nSTK: ${bankAccount.accountNumber}\nChủ TK: ${bankAccount.accountName}`
+                    : "Vui lòng liên hệ để lấy thông tin chuyển khoản."}`}
+                />
+                <CopyImageButton
+                  className="btn btn-icon"
+                  imageUrl={qrUrl}
+                  aria-label="Copy ảnh QR"
+                />
               </div>
-              <CopyImageButton imageUrl={qrUrl} label="Copy ảnh QR" />
             </div>
           )}
-          <button
-            type="button"
-            className="btn btn-block"
-            onClick={() => setToneOpen(true)}
-          >
-            <IconBell size={ICON_SIZE.sm} /> Gửi lời nhắc
-          </button>
           {toneOpen && (
             <ReminderToneSheet
               reminder={reminder}

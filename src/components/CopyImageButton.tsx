@@ -15,10 +15,12 @@ export default function CopyImageButton({
   imageUrl,
   label = "Copy ảnh QR",
   className = "btn btn-sm",
+  ariaLabel,
 }: {
   imageUrl: string;
   label?: string;
   className?: string;
+  ariaLabel?: string;
 }) {
   const [done, setDone] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -35,8 +37,6 @@ export default function CopyImageButton({
       const res = await fetch(imageUrl);
       if (!res.ok) throw new Error("Không tải được ảnh QR.");
       const blob = await res.blob();
-      // Trình duyệt chỉ nhận vài định dạng cho ClipboardItem (png là chắc ăn
-      // nhất) — SePay trả PNG nên không cần convert.
       await navigator.clipboard.write([
         new ClipboardItem({ [blob.type || "image/png"]: blob }),
       ]);
@@ -50,20 +50,16 @@ export default function CopyImageButton({
   }
 
   return (
-    <span>
+    <span style={{ display: "inline-block" }}>
       <button
         type="button"
         className={className}
         onClick={copyImage}
         disabled={busy}
         aria-live="polite"
+        aria-label={ariaLabel || label}
       >
-        {done ? (
-          <IconCheck size={ICON_SIZE.sm} />
-        ) : (
-          <IconImage size={ICON_SIZE.sm} />
-        )}
-        <span>{done ? "Đã copy ảnh" : label}</span>
+        {done ? <IconCheck size={ICON_SIZE.sm} /> : <IconImage size={ICON_SIZE.sm} />}
       </button>
       {failed && (
         <span className="hint" style={{ display: "block", marginTop: 4 }}>

@@ -118,6 +118,27 @@ function migratePushTokens(db: Database.Database) {
   }
 }
 
+/* Migration: tạo bảng scheduled_notifications nếu chưa có. */
+function migrateScheduledNotifications(db: Database.Database) {
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS scheduled_notifications (
+        id           INTEGER PRIMARY KEY AUTOINCREMENT,
+        title        TEXT NOT NULL,
+        body         TEXT NOT NULL,
+        target_type  TEXT NOT NULL, -- 'all' | 'group'
+        target_id    INTEGER,      -- groupId nếu target_type = 'group'
+        send_at      TEXT NOT NULL, -- ISO timestamp
+        status       TEXT NOT NULL DEFAULT 'pending', -- 'pending' | 'sent' | 'failed'
+        created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      CREATE INDEX IF NOT EXISTS idx_sched_status_time ON scheduled_notifications(status, send_at);
+    `);
+  } catch (e) {
+    console.warn("[poco-biller] Không tạo được bảng scheduled_notifications:", e);
+  }
+}
+
 export function dbFilePath(): string {
   return path.resolve(process.env.DATABASE_PATH || "./data/poco.db");
 }
@@ -132,6 +153,7 @@ export function getDb(): Database.Database {
   db.exec(SCHEMA);
   migrate(db);
   migratePushTokens(db);
+  migrateScheduledNotifications(db);
   instance = db;
 
   // Bật scheduler backup ở đây thay vì trong instrumentation.ts.

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import AuthProvider from "@/lib/AuthProvider";
+import ThemeProvider from "@/lib/ThemeProvider";
 
 export const metadata: Metadata = {
   title: "Poco Biller — chia tiền nhóm",
@@ -29,7 +30,9 @@ export default function RootLayout({
     <html lang="vi">
       <body>
         <AuthProvider>
-          {children}
+          <ThemeProvider>
+            {children}
+          </ThemeProvider>
         </AuthProvider>
       </body>
     </html>

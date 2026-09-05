@@ -108,6 +108,61 @@ export function listPushTokensForUser(userId: number): string[] {
   ).map((r) => r.token);
 }
 
+/** Lấy toàn bộ token của tất cả user trong hệ thống. */
+export function listAllPushTokens(): string[] {
+  return (
+    getDb()
+      .prepare("SELECT token FROM push_tokens")
+      .all() as { token: string }[]
+  ).map((r) => r.token);
+}
+
+/* ---------- Scheduled Push ---------- */
+
+export type ScheduledPush = {
+  id: number;
+  title: string;
+  body: string;
+  targetType: "all" | "group";
+  targetId: number | null;
+  sendAt: string;
+  status: "pending" | "sent" | "failed";
+};
+
+export function scheduleNotification(input: {
+  title: string;
+  body: string;
+  targetType: "all" | "group";
+  targetId: number | null;
+  sendAt: string;
+}): number {
+  const info = getDb().prepare(
+    `INSERT INTO scheduled_notifications (title, body, target_type, target_id, send_at)
+     VALUES (?, ?, ?, ?, ?)`
+  ).run(input.title, input.body, input.targetType, input.targetId, input.sendAt);
+  return Number(info.lastInsertRowid);
+}
+
+export function getPendingNotifications(): ScheduledPush[] {
+  const rows = getDb()
+    .prepare(
+      `SELECT id, title, body, target_type AS targetType, target_id AS targetId,
+       send_at AS sendAt, status
+       FROM scheduled_notifications
+       WHERE status = 'pending' AND send_at <= datetime('now')`
+    )
+    .all();
+  return rows as ScheduledPush[];
+}
+
+export function markNotificationStatus(id: number, status: "sent" | "failed"): void {
+  getDb()
+    .prepare("UPDATE scheduled_notifications SET status = ? WHERE id = ?")
+    .run(status, id);
+}
+
+/* ---------- Nhóm & thành viên ---------- */
+
 /* ---------- Nhóm & thành viên ---------- */
 
 export function makeInviteCode(): string {

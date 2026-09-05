@@ -9,9 +9,10 @@ export default function GroupPicker({
   onChange,
 }: {
   groups: Group[];
-  current: Group;
+  current: Group | null;
   onChange: (group: Group) => void;
 }) {
+  if (!current) return null;
   if (groups.length <= 1) {
     return <span className="faint">{current.name}</span>;
   }

@@ -7,10 +7,12 @@ export default function CopyButton({
   text,
   label = "Copy tin nhắn",
   className = "btn btn-sm",
+  ariaLabel,
 }: {
   text: string;
   label?: string;
   className?: string;
+  ariaLabel?: string;
 }) {
   const [done, setDone] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -21,7 +23,6 @@ export default function CopyButton({
       if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(text);
       } else {
-        // Trình duyệt cũ hoặc trang không chạy HTTPS
         const ta = document.createElement("textarea");
         ta.value = text;
         ta.style.position = "fixed";
@@ -40,16 +41,15 @@ export default function CopyButton({
   }
 
   return (
-    <span>
+    <span style={{ display: "inline-block" }}>
       <button
         type="button"
         className={className}
         onClick={copy}
         aria-live="polite"
+        aria-label={ariaLabel || label}
       >
-        {/* Icon đổi sang dấu tích khi copy xong — trạng thái không chỉ dựa vào màu */}
         {done ? <IconCheck size={ICON_SIZE.sm} /> : <IconCopy size={ICON_SIZE.sm} />}
-        <span>{done ? "Đã copy" : label}</span>
       </button>
       {failed && (
         <span className="hint" style={{ display: "block", marginTop: 4 }}>

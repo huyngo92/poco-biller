@@ -17,6 +17,7 @@ import {
   IconAlert,
   IconBank,
   IconChevron,
+  IconLighthouse,
   IconFileCsv,
   IconGear,
   IconOk,
@@ -27,9 +28,12 @@ import {
   IconTrash,
   IconUser,
   IconUsers,
+  IconSun,
+  IconMoon,
   ICON_SIZE,
 } from "@/components/Icons";
 import NotificationSettings from "@/components/NotificationSettings";
+import { useTheme, type Theme } from "@/lib/useTheme";
 
 type UserBankAccount = {
   bankId: string;
@@ -37,7 +41,6 @@ type UserBankAccount = {
   accountName: string;
 };
 
-/** Bấm mở panel bên dưới hàng — key nào đang mở, đóng khi bấm lại chính nó. */
 type Panel = "bank" | "qr" | "backup" | "rename" | null;
 
 export default function Settings({
@@ -55,6 +58,7 @@ export default function Settings({
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState("");
   const [panel, setPanel] = useState<Panel>(null);
+  const { theme, setTheme } = useTheme();
 
   const [bankAccount, setBankAccount] = useState<UserBankAccount | null>(null);
   const [allBanks, setAllBanks] = useState<Bank[]>([]);
@@ -183,7 +187,7 @@ export default function Settings({
                 </span>
                 {isAdmin && (
                   <span className="tag tag-blue" style={{ marginTop: 6 }}>
-                    Quản trị viên
+                    Biller trưởng
                   </span>
                 )}
               </div>
@@ -242,6 +246,43 @@ export default function Settings({
             </div>
           </section>
         )}
+
+        <section className="section">
+          <div className="section-head">
+            <h2 className="section-title">Giao diện</h2>
+          </div>
+          <div className="card">
+            <ul className="ledger">
+              <li>
+                <div className="list-row">
+                  <span className="list-row-icon">
+                    <IconLighthouse size={ICON_SIZE.md} />
+                  </span>
+                  <span className="list-row-main">
+                    Chế độ màu
+                    <span className="faint" style={{ display: "block", fontWeight: 400 }}>
+                      {theme === "system" ? "Tự động theo hệ thống" : theme === "light" ? "Sáng" : "Tối"}
+                    </span>
+                  </span>
+                  <div className="segmented" style={{ padding: 0 }}>
+                    {(["light", "dark", "system"] as Theme[]).map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        className="segment"
+                        aria-pressed={theme === t}
+                        onClick={() => setTheme(t)}
+                        style={{ fontSize: 11, padding: "4px 8px" }}
+                      >
+                        {t === "system" ? <IconLighthouse size={14} /> : t === "light" ? <IconSun size={14} /> : <IconMoon size={14} />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </li>
+            </ul>
+          </div>
+        </section>
 
         <section className="section">
           <div className="section-head">

@@ -1,0 +1,611 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { apiJson, rememberGroupId, resolveGroup } from "@/lib/client";
+import type { Bank } from "@/lib/banks";
+import { sepayQrUrl } from "@/lib/qr";
+import type { Group, Member, SessionUser } from "@/lib/types";
+import GroupPicker from "@/components/GroupPicker";
+import PullToRefresh from "@/components/PullToRefresh";
+import CopyButton from "@/components/CopyButton";
+import Avatar from "@/components/Avatar";
+import AvatarPicker from "@/components/AvatarPicker";
+import {
+  IconAlert,
+  IconBank,
+  IconChevron,
+  IconLighthouse,
+  IconFileCsv,
+  IconGear,
+  IconOk,
+  IconQrCode,
+  IconShield,
+  IconSignOut,
+  IconSpinner,
+  IconTrash,
+  IconUser,
+  IconUsers,
+  ICON_SIZE,
+} from "@/components/Icons";
+import NotificationSettings from "@/components/NotificationSettings";
+import { useTheme, type Theme } from "@/lib/useTheme";
+
+type UserBankAccount = {
+  bankId: string;
+  accountNumber: string;
+  accountName: string;
+};
+
+type Panel = "bank" | "qr" | "backup" | "rename" | null;
+
+export default function Settings({
+  user,
+  groups: initialGroups,
+}: {
+  user: SessionUser;
+  groups: Group[];
+}) {
+  const router = useRouter();
+  const [groups, setGroups] = useState(initialGroups);
+  const [group, setGroup] = useState<Group | null>(null);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [busy, setBusy] = useState("");
+  const [panel, setPanel] = useState<Panel>(null);
+  const { theme, setTheme } = useTheme();
+
+  const [bankAccount, setBankAccount] = useState<UserBankAccount | null>(null);
+  const [allBanks, setAllBanks] = useState<Bank[]>([]);
+  const [bankId, setBankId] = useState("");
+  const [accountName, setAccountName] = useState(user.name);
+  const [accountNumber, setAccountNumber] = useState("");
+
+  const [editName, setEditName] = useState(user.name);
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+
+  useEffect(() => {
+    setGroup(resolveGroup(groups));
+  }, [groups]);
+
+  const load = useCallback(async () => {
+    if (!group) return;
+    setError("");
+    try {
+      const m = await apiJson<{ members: Member[] }>(
+        `/api/groups/${group.id}/members`
+      );
+      setMembers(m.members);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Không tải được cài đặt.");
+    }
+  }, [group]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  useEffect(() => {
+    Promise.all([
+      apiJson<{ banks: Bank[] }>("/api/banks"),
+      apiJson<{ account: UserBankAccount | null }>("/api/user/bank-account"),
+    ])
+      .then(([b, a]) => {
+        setAllBanks(b.banks);
+        setBankAccount(a.account);
+        if (a.account) {
+          setBankId(a.account.bankId);
+          setAccountName(a.account.accountName);
+          setAccountNumber(a.account.accountNumber);
+        }
+      })
+      .catch((e) => console.error("Failed to load payment info:", e));
+  }, []);
+
+  const isAdmin = members.find((m) => m.userId === user.id)?.role === "admin";
+
+  async function act(key: string, fn: () => Promise<void>) {
+    setBusy(key);
+    setError("");
+    setNotice("");
+    try {
+      await fn();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Thao tác không thành công.");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function saveProfile(field: "name" | "avatar", value: string) {
+    await act(`save-${field}`, async () => {
+      await apiJson("/api/user/profile", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ [field]: value }),
+      });
+      setNotice(field === "name" ? "Đã đổi tên hiển thị." : "Đã đổi avatar.");
+      router.refresh();
+    });
+  }
+
+  const qrUrl =
+    bankAccount &&
+    sepayQrUrl({ bankId: bankAccount.bankId, accountNumber: bankAccount.accountNumber });
+
+  return (
+    <PullToRefresh onRefresh={load}>
+      <div className="shell">
+        <header className="topbar">
+          <IconGear size={ICON_SIZE.tab} style={{ color: "var(--tint-strong)" }} />
+          <span className="brand">Cá nhân</span>
+          <span className="spacer" />
+          {group && (
+            <GroupPicker
+              groups={groups}
+              current={group}
+              onChange={(g) => {
+                rememberGroupId(g.id);
+                setGroup(g);
+              }}
+            />
+          )}
+        </header>
+
+        {error && (
+          <p className="error" style={{ marginBottom: 14 }} role="alert">
+            <IconAlert size={ICON_SIZE.sm} />
+            <span>{error}</span>
+          </p>
+        )}
+        {notice && (
+          <p className="notice" style={{ marginBottom: 14 }} role="status">
+            <IconOk size={ICON_SIZE.sm} />
+            <span>{notice}</span>
+          </p>
+        )}
+
+        <section className="section">
+          <div className="card card-pad stack">
+            <div className="profile-header">
+              <button
+                type="button"
+                className="profile-avatar-btn"
+                onClick={() => setShowAvatarPicker(!showAvatarPicker)}
+                aria-label="Đổi avatar"
+              >
+                <Avatar avatarId={user.avatar} name={user.name} size={72} />
+                <span className="profile-avatar-edit">✏️</span>
+              </button>
+              <div className="profile-info">
+                <strong style={{ fontSize: 20 }}>{user.name}</strong>
+                <span className="faint" style={{ display: "block" }}>
+                  {user.email}
+                </span>
+                {isAdmin && (
+                  <span className="tag tag-blue" style={{ marginTop: 6 }}>
+                    Biller trưởng
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {showAvatarPicker && (
+              <div style={{ borderTop: "1px solid var(--rule)", paddingTop: 14 }}>
+                <AvatarPicker
+                  current={user.avatar || ""}
+                  onSelect={(id) => {
+                    void saveProfile("avatar", id);
+                    setShowAvatarPicker(false);
+                  }}
+                />
+              </div>
+            )}
+          </div>
+        </section>
+
+        {group && (
+          <section className="section">
+            <div className="section-head">
+              <h2 className="section-title">Nhóm của bạn</h2>
+            </div>
+            <div className="card">
+              <ul className="ledger">
+                <li>
+                  <Link href="/cai-dat/thanh-vien" className="list-row">
+                    <span className="list-row-icon">
+                      <IconUsers size={ICON_SIZE.md} />
+                    </span>
+                    <span className="list-row-main">
+                      {group.name}
+                      <span className="faint" style={{ display: "block", fontWeight: 400 }}>
+                        {members.length} thành viên
+                      </span>
+                    </span>
+                    <IconChevron size={ICON_SIZE.sm} className="faint" />
+                  </Link>
+                </li>
+                <li>
+                  <div className="list-row" style={{ cursor: "default" }}>
+                    <span className="list-row-icon">
+                      <IconUsers size={ICON_SIZE.md} />
+                    </span>
+                    <span className="list-row-main">
+                      Mã mời nhóm
+                      <span className="faint num" style={{ display: "block", fontWeight: 400 }}>
+                        {group.inviteCode}
+                      </span>
+                    </span>
+                    <CopyButton label="Sao chép" text={group.inviteCode} />
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </section>
+        )}
+
+        <section className="section">
+          <div className="section-head">
+            <h2 className="section-title">Giao diện</h2>
+          </div>
+          <div className="card">
+            <ul className="ledger">
+              <li>
+                <div className="list-row">
+                  <span className="list-row-icon">
+                    <IconLighthouse size={ICON_SIZE.md} />
+                  </span>
+                  <span className="list-row-main">
+                    Chế độ màu
+                    <span className="faint" style={{ display: "block", fontWeight: 400 }}>
+                      {theme === "system" ? "Tự động theo hệ thống" : theme === "light" ? "Sáng" : "Tối"}
+                    </span>
+                  </span>
+                  <div className="segmented" style={{ padding: 0 }}>
+                    {(["light", "dark", "system"] as Theme[]).map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        className="segment"
+                        aria-pressed={theme === t}
+                        onClick={() => setTheme(t)}
+                        style={{ fontSize: 11, padding: "4px 8px" }}
+                      >
+                        {t === "system" ? "Auto" : t === "light" ? "Sáng" : "Tối"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </li>
+            </ul>
+          </div>
+        </section>
+
+        <section className="section">
+          <div className="section-head">
+            <h2 className="section-title">Thanh toán</h2>
+          </div>
+          <div className="card">
+            <ul className="ledger">
+              <li>
+                <button
+                  type="button"
+                  className="list-row"
+                  onClick={() => setPanel(panel === "bank" ? null : "bank")}
+                >
+                  <span className="list-row-icon">
+                    <IconBank size={ICON_SIZE.md} />
+                  </span>
+                  <span className="list-row-main">
+                    Tài khoản nhận tiền
+                    <span className="faint" style={{ display: "block", fontWeight: 400 }}>
+                      {bankAccount
+                        ? `${allBanks.find((b) => b.id === bankAccount.bankId)?.shortName ?? bankAccount.bankId} · •••• ${bankAccount.accountNumber.slice(-4)}`
+                        : "Chưa thêm"}
+                      </span>
+                    </span>
+                    <IconChevron size={ICON_SIZE.sm} className="faint" />
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    className="list-row"
+                    onClick={() => setPanel(panel === "qr" ? null : "qr")}
+                  >
+                    <span className="list-row-icon">
+                      <IconQrCode size={ICON_SIZE.md} />
+                    </span>
+                    <span className="list-row-main">Mã QR nhận tiền</span>
+                    <IconChevron size={ICON_SIZE.sm} className="faint" />
+                  </button>
+                </li>
+              </ul>
+
+              {panel === "bank" && (
+                <div className="card-pad stack" style={{ borderTop: "1px solid var(--rule)" }}>
+                  {bankAccount ? (
+                    <>
+                      <dl className="kv">
+                        <dt>Ngân hàng</dt>
+                        <dd>
+                          {allBanks.find((b) => b.id === bankAccount.bankId)?.shortName ??
+                            bankAccount.bankId}
+                        </dd>
+                        <dt>Chủ tài khoản</dt>
+                        <dd>{bankAccount.accountName}</dd>
+                        <dt>Số tài khoản</dt>
+                        <dd className="kv-mono">{bankAccount.accountNumber}</dd>
+                      </dl>
+                      <button
+                        type="button"
+                        className="btn btn-danger btn-block"
+                        disabled={busy === "deleteAccount"}
+                        onClick={() =>
+                          act("deleteAccount", async () => {
+                            if (!window.confirm("Bạn có chắc muốn xoá thông tin tài khoản không?"))
+                              return;
+                            await apiJson("/api/user/bank-account", { method: "DELETE" });
+                            setBankAccount(null);
+                            setAccountName(user.name);
+                            setAccountNumber("");
+                            setBankId("");
+                            setNotice("Đã xoá thông tin tài khoản.");
+                          })
+                        }
+                      >
+                        {busy === "deleteAccount" ? (
+                          <>
+                            <IconSpinner size={ICON_SIZE.sm} /> Đang xoá...
+                          </>
+                        ) : (
+                          <>
+                            <IconTrash size={ICON_SIZE.sm} /> Xoá thông tin tài khoản
+                          </>
+                        )}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <div className="field">
+                        <label className="label" htmlFor="bank">
+                          Ngân hàng
+                        </label>
+                        <select
+                          id="bank"
+                          className="select"
+                          value={bankId}
+                          onChange={(e) => setBankId(e.target.value)}
+                        >
+                          <option value="">Chọn ngân hàng</option>
+                          {allBanks.map((b) => (
+                            <option key={b.id} value={b.id}>
+                              {b.shortName} ({b.id})
+                              {!b.sepayCode ? " — chưa hỗ trợ QR" : ""}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="field">
+                        <label className="label" htmlFor="accountName">
+                          Tên chủ tài khoản
+                        </label>
+                        <input
+                          id="accountName"
+                          className="input"
+                          value={accountName}
+                          onChange={(e) => setAccountName(e.target.value)}
+                        />
+                      </div>
+                      <div className="field">
+                        <label className="label" htmlFor="accountNumber">
+                          Số tài khoản
+                        </label>
+                        <input
+                          id="accountNumber"
+                          className="input"
+                          value={accountNumber}
+                          onChange={(e) => setAccountNumber(e.target.value)}
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        className="btn btn-primary btn-block"
+                        disabled={
+                          busy === "saveAccount" ||
+                          !bankId.trim() ||
+                          !accountName.trim() ||
+                          !accountNumber.trim()
+                        }
+                        onClick={() =>
+                          act("saveAccount", async () => {
+                            const newAccount = {
+                              bankId,
+                              accountName: accountName.trim(),
+                              accountNumber: accountNumber.trim(),
+                            };
+                            await apiJson("/api/user/bank-account", {
+                              method: "POST",
+                              headers: { "content-type": "application/json" },
+                              body: JSON.stringify(newAccount),
+                            });
+                            setBankAccount(newAccount);
+                            setNotice("Đã lưu thông tin tài khoản.");
+                          })
+                        }
+                      >
+                        {busy === "saveAccount" ? (
+                          <>
+                            <IconSpinner size={ICON_SIZE.sm} /> Đang lưu...
+                          </>
+                        ) : (
+                          "Lưu thông tin"
+                        )}
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {panel === "qr" && (
+                <div
+                  className="card-pad stack"
+                  style={{ borderTop: "1px solid var(--rule)", alignItems: "center" }}
+                >
+                  {qrUrl ? (
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={qrUrl}
+                        alt="Mã QR nhận tiền"
+                        width={200}
+                        height={200}
+                        style={{ borderRadius: 8, border: "1px solid var(--rule)" }}
+                      />
+                      <span className="faint tiny">Cho người khác quét để chuyển khoản cho bạn</span>
+                    </>
+                  ) : (
+                    <p className="muted" style={{ margin: 0 }}>
+                      Thêm tài khoản ngân hàng hỗ trợ QR ở mục "Tài khoản nhận tiền" để tạo mã.
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          </section>
+
+          <section className="section">
+            <div className="section-head">
+              <h2 className="section-title">Dữ liệu</h2>
+            </div>
+            <div className="card">
+              <ul className="ledger">
+                {group && (
+                  <li>
+                    <button
+                      type="button"
+                      className="list-row"
+                      onClick={() => setPanel(panel === "backup" ? null : "backup")}
+                    >
+                      <span className="list-row-icon">
+                        <IconFileCsv size={ICON_SIZE.md} />
+                      </span>
+                      <span className="list-row-main">
+                        Xuất sao kê
+                        <span className="faint" style={{ display: "block", fontWeight: 400 }}>
+                          CSV bill &amp; thanh toán
+                        </span>
+                      </span>
+                      <IconChevron size={ICON_SIZE.sm} className="faint" />
+                    </button>
+                  </li>
+                )}
+                <li>
+                  <div className="list-row" style={{ cursor: "default" }}>
+                    <span className="list-row-icon">
+                      <IconOk size={ICON_SIZE.md} />
+                    </span>
+                    <span className="list-row-main">Thông báo đẩy</span>
+                  </div>
+                </li>
+              </ul>
+
+              <NotificationSettings />
+
+              {panel === "backup" && group && (
+                <div className="card-pad row-wrap" style={{ borderTop: "1px solid var(--rule)" }}>
+                  <a className="btn btn-sm" href={`/api/groups/${group.id}/export?format=csv`}>
+                    <IconFileCsv size={ICON_SIZE.sm} /> Tải CSV bill
+                  </a>
+                  <a
+                    className="btn btn-sm"
+                    href={`/api/groups/${group.id}/export?format=csv-settlements`}
+                  >
+                    <IconFileCsv size={ICON_SIZE.sm} /> Tải CSV thanh toán
+                  </a>
+                </div>
+              )}
+            </div>
+          </section>
+
+          <section className="section">
+            <div className="section-head">
+              <h2 className="section-title">Tài khoản</h2>
+            </div>
+            <div className="card">
+              <ul className="ledger">
+                <li>
+                  <button
+                    type="button"
+                    className="list-row"
+                    onClick={() => setPanel(panel === "rename" ? null : "rename")}
+                  >
+                    <span className="list-row-icon">
+                      <IconUser size={ICON_SIZE.md} />
+                    </span>
+                    <span className="list-row-main">Tên hiển thị</span>
+                    <span className="list-row-value">{user.name}</span>
+                    <IconChevron size={ICON_SIZE.sm} className="faint" />
+                  </button>
+                </li>
+                <li>
+                  <Link href="/cai-dat/bao-mat" className="list-row">
+                    <span className="list-row-icon">
+                      <IconShield size={ICON_SIZE.md} />
+                    </span>
+                    <span className="list-row-main">Bảo mật</span>
+                    <IconChevron size={ICON_SIZE.sm} className="faint" />
+                  </Link>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    className="list-row"
+                    onClick={() => signOut({ callbackUrl: "/dang-nhap" })}
+                    disabled={busy === "logout"}
+                  >
+                    <span className="list-row-icon danger">
+                      {busy === "logout" ? (
+                        <IconSpinner size={ICON_SIZE.md} />
+                      ) : (
+                        <IconSignOut size={ICON_SIZE.md} />
+                      )}
+                    </span>
+                    <span className="list-row-main" style={{ color: "var(--red)" }}>
+                      Đăng xuất
+                    </span>
+                  </button>
+                </li>
+              </ul>
+
+              {panel === "rename" && (
+                <div className="card-pad row" style={{ borderTop: "1px solid var(--rule)" }}>
+                  <input
+                    className="input"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    placeholder="Tên của bạn"
+                    aria-label="Tên hiển thị"
+                  />
+                  <button
+                    type="button"
+                    className="btn"
+                    disabled={
+                      busy === "save-name" || !editName.trim() || editName.trim() === user.name
+                    }
+                    onClick={() => void saveProfile("name", editName.trim())}
+                  >
+                    {busy === "save-name" ? <IconSpinner size={ICON_SIZE.sm} /> : "Lưu"}
+                  </button>
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
+      </PullToRefresh>
+    </>
+  );
+}

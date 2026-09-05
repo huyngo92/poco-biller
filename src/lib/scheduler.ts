@@ -83,6 +83,7 @@ export function startBackupScheduler(): void {
   // nghẽn, và đã có lastRunMinute chặn chạy trùng.
   timer = setInterval(() => {
     void tick(fields);
+    void tickNotifications();
   }, 30_000);
 
   // Để tiến trình vẫn thoát được bình thường khi nhận SIGINT.
@@ -107,6 +108,40 @@ async function tick(fields: ReturnType<typeof parseCron>): Promise<void> {
     );
   } finally {
     running = false;
+  }
+}
+
+async function tickNotifications(): Promise<void> {
+  const [{ getPendingNotifications, listPushTokensForGroup, listAllPushTokens, markNotificationStatus }] = await Promise.all([
+    import("./queries"),
+    // các hàm khác lấy từ queries.ts
+  ]);
+  const { sendPushToMany } = await import("./push");
+
+  const pending = getPendingNotifications();
+  if (pending.length === 0) return;
+
+  for (const n of pending) {
+    try {
+      let tokens: string[] = [];
+      if (n.targetType === "all") {
+        tokens = listAllPushTokens();
+      } else if (n.targetType === "group") {
+        tokens = listPushTokensForGroup(n.targetId ?? 0);
+      }
+
+      if (tokens.length > 0) {
+        await sendPushToMany(tokens, {
+          title: n.title,
+          body: n.body,
+          link: "/",
+        });
+      }
+      markNotificationStatus(n.id, "sent");
+    } catch (e) {
+      console.error(`[poco-biller] Gửi scheduled push ${n.id} thất bại:`, e);
+      markNotificationStatus(n.id, "failed");
+    }
   }
 }
 

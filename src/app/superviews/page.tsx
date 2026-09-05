@@ -1,9 +1,12 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { apiJson } from "@/lib/client";
 import { IconAlert, IconSave, IconSpinner, ICON_SIZE } from "@/components/Icons";
 import { BalancePie, CategoryDonut } from "@/components/Charts";
+import NotificationCenter from "./NotificationCenter";
 
 type GroupStat = {
   id: number;
@@ -21,6 +24,9 @@ type SystemStats = {
 };
 
 export default function SuperViews() {
+  const { data: session, status: authStatus } = useSession();
+  const router = useRouter();
+
   const [stats, setStats] = useState<SystemStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -32,10 +38,9 @@ export default function SuperViews() {
     setLoading(true);
     setError("");
     try {
-      const auth = btoa(`${process.env.NEXT_PUBLIC_ADMIN_USERNAME || ""}:${process.env.NEXT_PUBLIC_ADMIN_PASSWORD || ""}`);
-      const res = await apiJson<SystemStats>("/api/admin/stats", {
-        headers: { "Authorization": `Basic ${auth}` }
-      });
+      // Không dùng process.env ở client cho thông tin nhạy cảm
+      // Thay vào đó, ta sẽ gửi request và server sẽ tự check quyền dựa trên session
+      const res = await apiJson<SystemStats>("/api/admin/stats");
       setStats(res);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Không tải được dữ liệu admin.");
@@ -45,18 +50,21 @@ export default function SuperViews() {
   }, []);
 
   useEffect(() => {
-    void loadStats();
-  }, [loadStats]);
+    if (authStatus === "authenticated" && session?.user?.email) {
+      // Chuyển logic check admin sang server-side hoàn toàn để tránh lộ danh sách email admin
+      void loadStats();
+    } else if (authStatus === "unauthenticated") {
+      router.push("/dang-nhap");
+    }
+  }, [authStatus, session, loadStats, router]);
 
   async function handleUpdateName(id: number) {
     if (!editName.trim()) return;
     setUpdatingId(id);
     try {
-      const auth = btoa(`${process.env.NEXT_PUBLIC_ADMIN_USERNAME || ""}:${process.env.NEXT_PUBLIC_ADMIN_PASSWORD || ""}`);
       await apiJson("/api/admin/stats", {
         method: "PATCH",
         headers: {
-          "Authorization": `Basic ${auth}`,
           "Content-Type": "application/json"
         },
         body: JSON.stringify({ groupId: id, name: editName }),
@@ -70,38 +78,51 @@ export default function SuperViews() {
     }
   }
 
-  if (loading && !stats) {
+  if (authStatus === "loading" || (loading && !stats && authStatus === "authenticated")) {
     return <div className="shell" style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh" }}><IconSpinner size={40} /></div>;
   }
 
-  // --- Data Processing for Charts ---
+  if (authStatus === "unauthenticated") return null;
 
-  // 1. Group Size Distribution (Donut)
+  if (error && !stats) {
+    return (
+      <div className="shell" style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
+        <div className="card card-pad" style={{ textAlign: "center", maxWidth: 320 }}>
+          <IconAlert size={40} style={{ color: "var(--error)", marginBottom: 12 }} />
+          <p>{error}</p>
+          <button className="btn btn-primary btn-block" style={{ marginTop: 16 }} onClick={() => router.push("/")}>
+            Quay lại Trang chủ
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!stats) return null;
+
   const sizeDist = {
     "1-3 người": 0,
     "4-6 người": 0,
     "7-10 người": 0,
     "11+ người": 0,
   };
-  stats?.groups.forEach(g => {
+  stats.groups.forEach(g => {
     if (g.memberCount <= 3) sizeDist["1-3 người"]++;
     else if (g.memberCount <= 6) sizeDist["4-6 người"]++;
     else if (g.memberCount <= 10) sizeDist["7-10 người"]++;
     else sizeDist["11+ người"]++;
   });
-  const distributionData = Object.entries(sizeDist).map(([name, value]) => ({ name, value }));
+  const distributionData = Object.entries(sizeDist).map(([category, amount]) => ({ category, amount }));
 
-  // 2. Top 5 Spending Groups (Bar)
-  const topSpending = [...(stats?.groups ?? [])]
+  const topSpending = [...stats.groups]
     .sort((a, b) => b.totalSpent - a.totalSpent)
     .slice(0, 5)
     .map(g => ({ name: g.name, value: g.totalSpent }));
 
-  // 3. Activity Trend (Line/Area)
-  const trendData = stats?.billTrend.map(t => ({ name: t.date, value: t.count })) ?? [];
+  const trendData = stats.billTrend.map(t => ({ name: t.date, value: t.count })) ?? [];
 
-  const emptyGroups = stats?.groups.filter(g => g.memberCount === 0).length ?? 0;
-  const activeGroups = stats?.groups.filter(g => g.memberCount > 0).length ?? 0;
+  const emptyGroups = stats.groups.filter(g => g.memberCount === 0).length ?? 0;
+  const activeGroups = stats.groups.filter(g => g.memberCount > 0).length ?? 0;
 
   return (
     <div className="shell" style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 20px" }}>
@@ -116,12 +137,11 @@ export default function SuperViews() {
         </div>
       )}
 
-      {/* Quick Summary */}
       <section className="section" style={{ marginTop: 24 }}>
         <div className="stats" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
           <div className="card card-pad" style={{ textAlign: "center" }}>
             <p className="stat-label">Tổng số nhóm</p>
-            <p className="num stat-value" style={{ fontSize: 32 }}>{stats?.totalGroups ?? 0}</p>
+            <p className="num stat-value" style={{ fontSize: 32 }}>{stats.totalGroups}</p>
           </div>
           <div className="card card-pad" style={{ textAlign: "center" }}>
             <p className="stat-label">Nhóm có thành viên</p>
@@ -134,7 +154,6 @@ export default function SuperViews() {
         </div>
       </section>
 
-      {/* Charts Section */}
       <section className="section">
         <div className="section-head">
           <h2 className="section-title">Phân tích hệ thống</h2>
@@ -143,7 +162,7 @@ export default function SuperViews() {
           <div className="card card-pad">
             <p className="stat-label" style={{ textAlign: "center", marginBottom: 16 }}>Quy mô nhóm</p>
             <div style={{ height: 200, display: "flex", justifyContent: "center" }}>
-              <CategoryDonut data={distributionData} total={stats?.totalGroups ?? 0} />
+              <CategoryDonut data={distributionData} total={stats.totalGroups} />
             </div>
           </div>
           <div className="card card-pad">
@@ -179,7 +198,16 @@ export default function SuperViews() {
         </div>
       </section>
 
-      {/* Management Table */}
+      <section className="section">
+        <div className="section-head">
+          <h2 className="section-title">Quản lý Thông báo</h2>
+        </div>
+        <NotificationCenter
+          groups={stats.groups}
+          onRefresh={loadStats}
+        />
+      </section>
+
       <section className="section">
         <div className="section-head">
           <h2 className="section-title">Quản lý Nhóm</h2>
@@ -196,7 +224,7 @@ export default function SuperViews() {
               </tr>
             </thead>
             <tbody>
-              {stats?.groups.map((g) => (
+              {stats.groups.map((g) => (
                 <tr key={g.id} style={{ borderBottom: "1px solid var(--separator)" }}>
                   <td style={{ padding: "12px 16px" }}>
                     {editingId === g.id ? (

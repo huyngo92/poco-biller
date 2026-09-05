@@ -39,8 +39,10 @@ function serviceAccount(): object | null {
 /** Khởi tạo firebase-admin một lần. Trả về app, hoặc null nếu chưa cấu hình. */
 async function getAdminApp() {
   if (initialized) {
-    // đã thử khởi tạo; trả về app hiện có (hoặc null nếu lỗi trước đó)
+    const { admin, messaging } = await getAdminAppInternal();
+    return { admin, messaging };
   }
+
   const cred = serviceAccount();
   if (!cred) {
     initError =

@@ -54,6 +54,12 @@ import {
   X,
   Zap,
   ZapOff,
+  Calendar,
+  Save,
+  Lightbulb,
+  Sun,
+  Moon,
+  Share,
   type LucideProps,
 } from "lucide-react";
 
@@ -110,6 +116,8 @@ export const IconAdd = wrap(PlusCircle, "IconAdd");
 export const IconBell = wrap(Bell, "IconBell");
 /** Tab "Cài đặt" — SF: gearshape */
 export const IconGear = wrap(Settings, "IconGear");
+/** Lịch — SF: calendar */
+export const IconCalendar = wrap(Calendar, "IconCalendar");
 
 /** Nút back của nav bar — SF: chevron.left */
 export const IconBack = wrap(ChevronLeft, "IconBack");
@@ -171,6 +179,10 @@ export const IconShield = wrap(Shield, "IconShield");
 export const IconBank = wrap(Landmark, "IconBank");
 /** Mã QR chuyển khoản — SF: qrcode */
 export const IconQrCode = wrap(QrCode, "IconQrCode");
+/** Gợi ý, thông tin — SF: lightbulb */
+export const IconLighthouse = wrap(Lightbulb, "IconLighthouse");
+/** Chia sẻ — SF: square.and.arrow.up */
+export const IconShare = wrap(Share, "IconShare");
 
 /* ---------- Dữ liệu, sao lưu ---------- */
 
@@ -180,9 +192,15 @@ export const IconCloudUp = wrap(CloudUpload, "IconCloudUp");
 export const IconFileJson = wrap(FileJson, "IconFileJson");
 /** SF: tablecells */
 export const IconFileCsv = wrap(FileSpreadsheet, "IconFileCsv");
+/** SF: square.and.arrow.down */
+export const IconSave = wrap(Save, "IconSave");
 
 /* ---------- Trạng thái ---------- */
 
+/** SF: sun.max.fill */
+export const IconSun = wrap(Sun, "IconSun");
+/** SF: moon.fill */
+export const IconMoon = wrap(Moon, "IconMoon");
 /** SF: exclamationmark.circle */
 export const IconAlert = wrap(CircleAlert, "IconAlert");
 /** SF: checkmark.circle */

@@ -197,7 +197,7 @@ export default function GroupMembers({
                         <span className="entry-title">{m.name}</span>
                         <span className="faint" style={{ display: "block" }}>
                           {m.userId === user.id ? "Bạn" : "Thành viên"}
-                          {m.role === "admin" ? " · Quản trị viên" : ""}
+                          {m.role === "admin" ? " · Biller trưởng" : ""}
                         </span>
                       </span>
                       {isAdmin && m.userId !== user.id && (

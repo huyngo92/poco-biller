@@ -1,10 +1,19 @@
 import { fail, ok } from "@/lib/api";
 import { getSystemStats, updateGroupName } from "@/lib/queries";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth-options";
+
+async function checkAdmin(req: Request) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) return false;
+
+  const adminEmails = process.env.ADMIN_EMAILS?.split(",") || [];
+  return adminEmails.includes(session.user.email);
+}
 
 export async function GET(req: Request) {
   try {
-    const authHeader = req.headers.get("authorization");
-    if (!authHeader || authHeader !== `Basic ${Buffer.from(`${process.env.ADMIN_USERNAME}:${process.env.ADMIN_PASSWORD}`).toString("base64")}`) {
+    if (!(await checkAdmin(req))) {
       return fail(new Error("Unauthorized"), 401);
     }
 
@@ -17,8 +26,7 @@ export async function GET(req: Request) {
 
 export async function PATCH(req: Request) {
   try {
-    const authHeader = req.headers.get("authorization");
-    if (!authHeader || authHeader !== `Basic ${Buffer.from(`${process.env.ADMIN_USERNAME}:${process.env.ADMIN_PASSWORD}`).toString("base64")}`) {
+    if (!(await checkAdmin(req))) {
       return fail(new Error("Unauthorized"), 401);
     }
 

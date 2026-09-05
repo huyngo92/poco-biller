@@ -74,8 +74,8 @@ export default function AuthForm() {
     <div className="shell" style={{ paddingBottom: 40, paddingTop: 56 }}>
       <div className="auth-hero">
         <Mascot name="celebrate" size={132} />
-        <div className="row" style={{ justifyContent: "center", gap: 8 }}>
-          <span className="brand-mark" aria-hidden="true" />
+        <div className="row" style={{ justifyContent: "center", gap: 8, alignItems: "center" }}>
+          <img src="/favicon.ico" alt="Logo" width={24} height={24} style={{ borderRadius: 4 }} />
           <span className="brand">Poco Biller</span>
         </div>
         <h1 style={{ marginTop: 14, marginBottom: 4 }}>
