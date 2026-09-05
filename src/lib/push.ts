@@ -39,8 +39,12 @@ function serviceAccount(): object | null {
 /** Khởi tạo firebase-admin một lần. Trả về app, hoặc null nếu chưa cấu hình. */
 async function getAdminApp() {
   if (initialized) {
-    const { admin, messaging } = await getAdminAppInternal();
-    return { admin, messaging };
+    // Since initialized is true, we can just perform the imports again
+    // or better yet, the app is already created in the firebase-admin internal state.
+    const { getApp } = await import("firebase-admin/app");
+    const { getMessaging } = await import("firebase-admin/messaging");
+    const admin = getApp();
+    return { admin, messaging: getMessaging(admin) };
   }
 
   const cred = serviceAccount();
