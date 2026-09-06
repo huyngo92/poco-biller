@@ -37,7 +37,7 @@ export default function NotificationCenter({
   const loadScheduled = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await apiJson<{ scheduled: ScheduledPush[] }>( "/api/admin/push");
+      const res = await apiJson<{ scheduled: ScheduledPush[] }>( "/api/superviews/push");
       setScheduled(res.scheduled);
     } catch (e) {
       setError("Không tải được danh sách hẹn giờ.");
@@ -58,7 +58,7 @@ export default function NotificationCenter({
     setIsSending(true);
     setError("");
     try {
-      await apiJson("/api/admin/push", {
+      await apiJson("/api/superviews/push", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"

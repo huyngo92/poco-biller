@@ -26,6 +26,9 @@ import {
   IconShare,
   ICON_SIZE,
 } from "@/components/Icons";
+import NotificationSettings from "@/components/NotificationSettings";
+// Removed imports from @/lib/notifications to avoid server-side code in client components
+
 
 /** Khoá nhận diện một reminder khi không có id cố định — dùng để đánh dấu
  *  "đã xác nhận" cục bộ ngay khi bấm, trước khi danh sách tải lại từ server. */
@@ -322,6 +325,32 @@ export default function Reminders({
           note: "Xác nhận từ trang Nhắc nợ",
         }),
       });
+
+      // Gửi thông báo cho các bên
+      if (r.debtor.id === user.id) {
+        // Người nợ xác nhận -> Thông báo cho người cho vay
+        await apiJson("/api/push/notify", {
+          method: "POST",
+          body: JSON.stringify({
+            type: "payment_initiated",
+            userId: r.creditor.user.id,
+            userName: r.debtor.name,
+            amount: formatVnd(r.amount),
+          }),
+        });
+      } else {
+        // Người cho vay xác nhận -> Thông báo cho người nợ
+        await apiJson("/api/push/notify", {
+          method: "POST",
+          body: JSON.stringify({
+            type: "payment_confirmed",
+            userId: r.debtor.id,
+            userName: r.creditor.user.name,
+            amount: formatVnd(r.amount),
+          }),
+        });
+      }
+
       await loadReminders(r.groupId);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Không ghi nhận được thanh toán.");

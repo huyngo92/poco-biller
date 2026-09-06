@@ -99,6 +99,11 @@ function migrate(db: Database.Database) {
   } catch {
     // cột đã tồn tại — bỏ qua
   }
+  try {
+    db.exec(`ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0`);
+  } catch {
+    // cột đã tồn tại — bỏ qua
+  }
 }
 
 /* Migration: tạo bảng push_tokens nếu chưa có (chạy sau SCHEMA đã exec). */

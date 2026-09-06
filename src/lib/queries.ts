@@ -17,6 +17,33 @@ export function listAllGroups(): Group[] {
     .all() as Group[];
 }
 
+/** Danh sách tất cả người dùng cho Admin. */
+export function listAllUsers() {
+  return getDb()
+    .prepare(`SELECT id, email, name, avatar, is_admin, created_at FROM users ORDER BY created_at DESC`)
+    .all() as { id: number; email: string; name: string; avatar: string; is_admin: number; created_at: string }[];
+}
+
+export function updateUserEmail(userId: number, email: string): void {
+  getDb()
+    .prepare(`UPDATE users SET email = ? WHERE id = ?`)
+    .run(email, userId);
+}
+
+export function updateUserPassword(userId: number, hash: string): void {
+  getDb()
+    .prepare(`UPDATE users SET password_hash = ? WHERE id = ?`)
+    .run(hash, userId);
+}
+
+export function listTokensForUser(userId: number): string[] {
+  return (
+    getDb()
+      .prepare("SELECT token FROM push_tokens WHERE user_id = ?")
+      .all(userId) as { token: string }[]
+  ).map((r) => r.token);
+}
+
 export function updateGroupName(groupId: number, name: string): void {
   getDb()
     .prepare(`UPDATE groups SET name = ? WHERE id = ?`)
@@ -115,6 +142,11 @@ export function listAllPushTokens(): string[] {
       .prepare("SELECT token FROM push_tokens")
       .all() as { token: string }[]
   ).map((r) => r.token);
+}
+
+/** Xoá một token cụ thể. */
+export function deletePushToken(token: string): void {
+  getDb().prepare("DELETE FROM push_tokens WHERE token = ?").run(token);
 }
 
 /* ---------- Scheduled Push ---------- */

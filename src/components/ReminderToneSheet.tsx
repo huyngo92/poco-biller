@@ -6,7 +6,10 @@ import { formatVnd } from "@/lib/money";
 import { sepayQrUrl } from "@/lib/qr";
 import CopyButton from "./CopyButton";
 import CopyImageButton from "./CopyImageButton";
-import { IconClose, ICON_SIZE } from "./Icons";
+import { IconClose, IconBell, ICON_SIZE } from "./Icons";
+// Removed import from @/lib/notifications to avoid server-side code in client components
+
+type Tone = "gentle" | "qr" | "custom";
 
 type Tone = "gentle" | "qr" | "custom";
 
@@ -144,7 +147,32 @@ export default function ReminderToneSheet({
           </p>
         )}
 
-        <CopyButton text={message} label="Copy lời nhắc" className="btn btn-primary btn-block" />
+        <div className="row-wrap" style={{ justifyContent: "center", gap: 8, marginBottom: 12 }}>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={async () => {
+              try {
+                await apiJson("/api/push/notify", {
+                  method: "POST",
+                  body: JSON.stringify({
+                    type: "debt_reminder",
+                    userId: reminder.debtor.id,
+                    userName: reminder.creditor.user.name,
+                    amount: formatVnd(reminder.amount),
+                    groupName: groupName,
+                  }),
+                });
+                alert("Đã gửi thông báo đẩy tới người nợ!");
+              } catch (e) {
+                alert("Gửi thông báo thất bại.");
+              }
+            }}
+          >
+            <IconBell size={ICON_SIZE.sm} /> Gửi thông báo
+          </button>
+          <CopyButton text={message} label="Copy lời nhắc" className="btn btn-primary" />
+        </div>
       </div>
     </div>
   );

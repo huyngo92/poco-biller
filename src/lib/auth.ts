@@ -1,8 +1,10 @@
 import bcrypt from "bcryptjs";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
+import { getDb } from "./db";
 
 import type { SessionUser } from "./types";
+
 
 export type { SessionUser };
 
@@ -29,6 +31,14 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
 export async function requireUser(): Promise<SessionUser> {
   const user = await getCurrentUser();
   if (!user) throw new HttpError(401, "Yêu cầu đăng nhập.");
+  return user;
+}
+
+/** Yêu cầu người dùng phải là Super Admin. */
+export async function requireAdmin(): Promise<SessionUser> {
+  const user = await requireUser();
+  const superAdmins = process.env.SUPER_ADMIN_EMAILS?.split(",") || [];
+  if (!superAdmins.includes(user.email)) throw new HttpError(403, "Yêu cầu quyền Super Admin.");
   return user;
 }
 

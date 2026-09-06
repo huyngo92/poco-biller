@@ -40,7 +40,7 @@ export default function SuperViews() {
     try {
       // Không dùng process.env ở client cho thông tin nhạy cảm
       // Thay vào đó, ta sẽ gửi request và server sẽ tự check quyền dựa trên session
-      const res = await apiJson<SystemStats>("/api/admin/stats");
+      const res = await apiJson<SystemStats>("/api/superviews/stats");
       setStats(res);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Không tải được dữ liệu admin.");
@@ -62,7 +62,7 @@ export default function SuperViews() {
     if (!editName.trim()) return;
     setUpdatingId(id);
     try {
-      await apiJson("/api/admin/stats", {
+      await apiJson("/api/superviews/stats", {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json"
@@ -128,7 +128,20 @@ export default function SuperViews() {
     <div className="shell" style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 20px" }}>
       <header className="topbar">
         <span className="brand">System Superviews</span>
-        <span className="tag tag-blue">Admin Only</span>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <span className="tag tag-blue">Admin Only</span>
+          <a href="/superviews/users" style={{
+            fontSize: 12,
+            padding: "2px 8px",
+            backgroundColor: "var(--fill-secondary)",
+            color: "var(--label-strong)",
+            textDecoration: "none",
+            borderRadius: 4,
+            border: "1px solid var(--separator)"
+          }}>
+            Quản lý User
+          </a>
+        </div>
       </header>
 
       {error && (
