@@ -5,21 +5,22 @@ import { hashPassword } from "@/lib/auth";
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await requireAdmin();
-    const id = Number(params.id);
+    const { id } = await params;
+    const userId = Number(id);
     const body = await request.json();
     const { email, password } = body;
 
     if (email) {
-      updateUserEmail(id, email);
+      updateUserEmail(userId, email);
     }
 
     if (password) {
       const hash = hashPassword(password);
-      updateUserPassword(id, hash);
+      updateUserPassword(userId, hash);
     }
 
     return NextResponse.json({ success: true });

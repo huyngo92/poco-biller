@@ -4,12 +4,11 @@ import { useMemo, useState } from "react";
 import type { Reminder } from "@/lib/logic";
 import { formatVnd } from "@/lib/money";
 import { sepayQrUrl } from "@/lib/qr";
+import { apiJson } from "@/lib/client";
 import CopyButton from "./CopyButton";
 import CopyImageButton from "./CopyImageButton";
 import { IconClose, IconBell, ICON_SIZE } from "./Icons";
 // Removed import from @/lib/notifications to avoid server-side code in client components
-
-type Tone = "gentle" | "qr" | "custom";
 
 type Tone = "gentle" | "qr" | "custom";
 
