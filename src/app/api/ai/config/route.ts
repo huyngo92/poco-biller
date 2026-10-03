@@ -1,10 +1,10 @@
 import { requireUser } from "@/lib/auth";
-import { aiConfig, askClaude } from "@/lib/claude";
+import { askAi, currentAiConfig } from "@/lib/ai";
 import { fail, ok } from "@/lib/api";
 
 /**
- * Cho biết app đang gọi endpoint/model nào, để admin không phải SSH vào máy đọc
- * file .env mỗi lần muốn kiểm tra.
+ * Cho biết app đang gọi provider/endpoint/model nào, để admin không phải SSH
+ * vào máy đọc file .env mỗi lần muốn kiểm tra.
  *
  * Chỉ trả host và tên model. KHÔNG trả API key, cũng không trả đường dẫn đầy đủ
  * (path của gateway nội bộ có thể là thông tin không nên phát tán).
@@ -12,12 +12,12 @@ import { fail, ok } from "@/lib/api";
 export async function GET() {
   try {
     await requireUser();
-    const cfg = aiConfig();
+    const cfg = currentAiConfig();
     return ok({
+      provider: cfg.provider,
       host: cfg.host,
       model: cfg.model,
       maxTokens: cfg.maxTokens,
-      authStyle: cfg.authStyle,
       timeoutMs: cfg.timeoutMs,
       hasKey: cfg.hasKey,
     });
@@ -40,7 +40,7 @@ export async function POST() {
     try {
       // Prompt ngắn nhất có thể — chỉ cần biết đường đi có thông, không cần
       // model trả lời hay. maxTokens nhỏ để không tốn tiền khi bấm nhiều lần.
-      const text = await askClaude({
+      const text = await askAi({
         system: "Trả lời đúng một từ: OK",
         content: [{ type: "text", text: "ping" }],
         maxTokens: 16,

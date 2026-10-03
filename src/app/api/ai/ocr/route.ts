@@ -1,6 +1,6 @@
 import { HttpError, requireUser } from "@/lib/auth";
 import { assertMember, listMembers } from "@/lib/queries";
-import { askClaude, extractJson } from "@/lib/claude";
+import { askAi, extractJson } from "@/lib/ai";
 import { fail, ok } from "@/lib/api";
 import { CATEGORIES, type OcrResult } from "@/lib/types";
 import { today } from "@/lib/period";
@@ -41,7 +41,7 @@ export async function POST(req: Request) {
 
     const base64 = Buffer.from(await file.arrayBuffer()).toString("base64");
 
-    const text = await askClaude({
+    const text = await askAi({
       system: SYSTEM,
       content: [
         {

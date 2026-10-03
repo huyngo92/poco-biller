@@ -496,7 +496,7 @@ export default function Settings({
                     <span className="list-row-main">
                       Xuất sao kê
                       <span className="faint" style={{ display: "block", fontWeight: 400 }}>
-                        CSV bill &amp; thanh toán
+                        Toàn bộ bill &amp; ghi nhận trả nợ
                       </span>
                     </span>
                     <IconChevron size={ICON_SIZE.sm} className="faint" />
@@ -510,13 +510,7 @@ export default function Settings({
             {panel === "backup" && group && (
               <div className="card-pad row-wrap" style={{ borderTop: "1px solid var(--rule)" }}>
                 <a className="btn btn-sm" href={`/api/groups/${group.id}/export?format=csv`}>
-                  <IconFileCsv size={ICON_SIZE.sm} /> Tải CSV bill
-                </a>
-                <a
-                  className="btn btn-sm"
-                  href={`/api/groups/${group.id}/export?format=csv-settlements`}
-                >
-                  <IconFileCsv size={ICON_SIZE.sm} /> Tải CSV thanh toán
+                  <IconFileCsv size={ICON_SIZE.sm} /> Tải CSV sao kê
                 </a>
               </div>
             )}

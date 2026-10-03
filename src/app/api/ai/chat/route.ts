@@ -1,6 +1,6 @@
 import { HttpError, requireUser } from "@/lib/auth";
 import { assertMember, listMembers, resolveShares } from "@/lib/queries";
-import { askClaude, extractJson } from "@/lib/claude";
+import { askAi, extractJson } from "@/lib/ai";
 import { fail, num, ok, str } from "@/lib/api";
 import { CATEGORIES, type ChatDraft, type SplitMode } from "@/lib/types";
 import { today } from "@/lib/period";
@@ -56,7 +56,7 @@ export async function POST(req: Request) {
     const memberIds = new Set(members.map((m) => m.userId));
     const todayIso = today();
 
-    const text = await askClaude({
+    const text = await askAi({
       system: buildSystem(members, user.id, todayIso),
       content: [{ type: "text", text: message }],
     });

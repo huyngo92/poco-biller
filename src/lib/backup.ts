@@ -16,24 +16,29 @@ function toCsv(rows: (string | number)[][]): string {
   return "﻿" + rows.map((r) => r.map(csvCell).join(",")).join("\r\n") + "\r\n";
 }
 
-/** Mỗi dòng là phần của một người trong một bill — dễ pivot trong Excel. */
-export function exportGroupCsv(groupId: number, from = ALL_FROM, to = ALL_TO): string {
+/**
+ * Sao kê gộp 1 file: khối bill (mỗi dòng là phần của một người trong một
+ * bill — dễ pivot trong Excel) nối tiếp khối ghi nhận trả nợ, cách nhau một
+ * dòng trống. Trước đây đây là hai file CSV riêng (exportGroupCsv /
+ * exportSettlementsCsv) — gộp lại để người dùng chỉ cần tải một file.
+ */
+export function exportStatementCsv(groupId: number, from = ALL_FROM, to = ALL_TO): string {
   const bills = listBills(groupId, from, to);
-  const rows: (string | number)[][] = [
-    [
-      "bill_id",
-      "ngay",
-      "ten_bill",
-      "nhom_chi_phi",
-      "tong_tien",
-      "nguoi_ung_tien",
-      "cach_chia",
-      "thanh_vien",
-      "phan_phai_tra",
-      "ghi_chu",
-    ],
-  ];
+  const settlements = listSettlements(groupId, from, to);
 
+  const rows: (string | number)[][] = [["SAO KE BILL"]];
+  rows.push([
+    "bill_id",
+    "ngay",
+    "ten_bill",
+    "nhom_chi_phi",
+    "tong_tien",
+    "nguoi_ung_tien",
+    "cach_chia",
+    "thanh_vien",
+    "phan_phai_tra",
+    "ghi_chu",
+  ]);
   for (const b of bills)
     for (const s of b.shares)
       rows.push([
@@ -49,15 +54,12 @@ export function exportGroupCsv(groupId: number, from = ALL_FROM, to = ALL_TO): s
         b.note,
       ]);
 
-  return toCsv(rows);
-}
-
-export function exportSettlementsCsv(groupId: number, from = ALL_FROM, to = ALL_TO): string {
-  const rows: (string | number)[][] = [
-    ["settlement_id", "ngay_tra", "nguoi_tra", "nguoi_nhan", "so_tien", "ghi_chu"],
-  ];
-  for (const s of listSettlements(groupId, from, to))
+  rows.push([]);
+  rows.push(["GHI NHAN TRA NO"]);
+  rows.push(["settlement_id", "ngay_tra", "nguoi_tra", "nguoi_nhan", "so_tien", "ghi_chu"]);
+  for (const s of settlements)
     rows.push([s.id, formatDateVn(s.paidOn), s.fromName, s.toName, s.amount, s.note]);
+
   return toCsv(rows);
 }
 

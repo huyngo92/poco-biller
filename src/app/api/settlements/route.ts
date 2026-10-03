@@ -1,4 +1,4 @@
-import { requireUser } from "@/lib/auth";
+import { HttpError, requireUser } from "@/lib/auth";
 import { assertMember, createSettlement, listPushTokensForUser } from "@/lib/queries";
 import { dateStr, fail, num, ok } from "@/lib/api";
 import { sendPushToMany } from "@/lib/push";
@@ -8,10 +8,15 @@ export async function POST(req: Request) {
     const user = await requireUser();
     const body = await req.json();
     const groupId = num(body.groupId, "groupId");
-    assertMember(groupId, user.id);
+    const role = assertMember(groupId, user.id);
 
     const fromUserId = num(body.fromUserId, "người trả");
     const toUserId = num(body.toUserId, "người nhận");
+    // Chỉ người trả, người nhận trong khoản này, hoặc Biller trưởng (role
+    // admin của nhóm) mới được xác nhận — chặn thành viên khác tự ghi nhận
+    // thay cho cặp người không liên quan đến mình.
+    if (fromUserId !== user.id && toUserId !== user.id && role !== "admin")
+      throw new HttpError(403, "Chỉ người trả, người nhận, hoặc Biller trưởng mới được xác nhận khoản này.");
     const amount = Math.round(num(body.amount, "số tiền"));
     const id = createSettlement({
       groupId,

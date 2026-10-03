@@ -75,6 +75,7 @@ function ReminderRow({
   reminder,
   variant,
   currentUserId,
+  isAdmin,
   confirming,
   settling,
   onSettle,
@@ -83,6 +84,7 @@ function ReminderRow({
   reminder: Reminder;
   variant: "mine" | "theirs" | "other";
   currentUserId: number;
+  isAdmin: boolean;
   confirming: boolean;
   settling: boolean;
   onSettle: () => void;
@@ -106,7 +108,10 @@ function ReminderRow({
 
   // Cả người nợ và người nhận đều xác nhận được — hai bên chỉ cần một trong
   // hai xác nhận là khoản này coi như đã trả (giống thoả thuận ngoài đời).
-  const canConfirm = debtor.id === currentUserId || creditor.user.id === currentUserId;
+  // Biller trưởng (isAdmin) xác nhận được bất kỳ khoản nào trong nhóm, kể cả
+  // khoản không liên quan trực tiếp đến mình (mục "Nợ chung trong nhóm").
+  const canConfirm =
+    isAdmin || debtor.id === currentUserId || creditor.user.id === currentUserId;
 
   // Gợi ý nhỏ dưới tên — giống nhãn hạng mục/số người dưới tên bill ở "Bill
   // gần đây": chỉ hiện khi có thông tin thật (đã liên kết ngân hàng hay chưa),
@@ -239,7 +244,9 @@ function ReminderRow({
                   <IconSettle size={ICON_SIZE.sm} />{" "}
                   {debtor.id === currentUserId
                     ? "Xác nhận đã chuyển khoản"
-                    : "Xác nhận đã nhận tiền"}
+                    : creditor.user.id === currentUserId
+                      ? "Xác nhận đã nhận tiền"
+                      : "Xác nhận đã trả (Biller trưởng)"}
                 </>
               )}
             </button>
@@ -312,6 +319,9 @@ export default function Reminders({
     setConfirmingKey(null);
     setSettlingKey(key);
     setError("");
+    // Người nợ hoặc người nhận tự xác nhận — khác với Biller trưởng xác nhận
+    // hộ một khoản không liên quan trực tiếp đến mình (mục "Nợ chung trong nhóm").
+    const isSelfConfirm = r.debtor.id === user.id || r.creditor.user.id === user.id;
     try {
       await apiJson("/api/settlements", {
         method: "POST",
@@ -322,33 +332,45 @@ export default function Reminders({
           toUserId: r.creditor.user.id,
           amount: r.amount,
           paidOn: today(),
-          note: "Xác nhận từ trang Nhắc nợ",
+          note: isSelfConfirm
+            ? "Xác nhận từ trang Nhắc nợ"
+            : `Biller trưởng ${user.name} xác nhận`,
         }),
       });
 
-      // Gửi thông báo cho các bên
-      if (r.debtor.id === user.id) {
-        // Người nợ xác nhận -> Thông báo cho người cho vay
-        await apiJson("/api/push/notify", {
-          method: "POST",
-          body: JSON.stringify({
-            type: "payment_initiated",
-            userId: r.creditor.user.id,
-            userName: r.debtor.name,
-            amount: formatVnd(r.amount),
-          }),
-        });
-      } else {
-        // Người cho vay xác nhận -> Thông báo cho người nợ
-        await apiJson("/api/push/notify", {
-          method: "POST",
-          body: JSON.stringify({
-            type: "payment_confirmed",
-            userId: r.debtor.id,
-            userName: r.creditor.user.name,
-            amount: formatVnd(r.amount),
-          }),
-        });
+      // Gửi thông báo cho các bên — chỉ khi chính người nợ/người nhận tự xác
+      // nhận; Biller trưởng xác nhận hộ thì bỏ qua (không có "bên tự xác nhận"
+      // để phân biệt loại thông báo). Khoản đã ghi nhận xong ở bước trên rồi,
+      // nên lỗi gửi thông báo (vd. thiếu token, mất mạng) không được làm
+      // người dùng tưởng là xác nhận thất bại — chỉ log, không throw ra ngoài.
+      if (isSelfConfirm) {
+        try {
+          if (r.debtor.id === user.id) {
+            // Người nợ xác nhận -> Thông báo cho người cho vay
+            await apiJson("/api/push/notify", {
+              method: "POST",
+              body: JSON.stringify({
+                type: "payment_initiated",
+                userId: r.creditor.user.id,
+                userName: r.debtor.name,
+                amount: formatVnd(r.amount),
+              }),
+            });
+          } else {
+            // Người cho vay xác nhận -> Thông báo cho người nợ
+            await apiJson("/api/push/notify", {
+              method: "POST",
+              body: JSON.stringify({
+                type: "payment_confirmed",
+                userId: r.debtor.id,
+                userName: r.creditor.user.name,
+                amount: formatVnd(r.amount),
+              }),
+            });
+          }
+        } catch (notifyError) {
+          console.error("Không gửi được thông báo xác nhận thanh toán", notifyError);
+        }
       }
 
       await loadReminders(r.groupId);
@@ -358,6 +380,8 @@ export default function Reminders({
       setSettlingKey(null);
     }
   }
+
+  const isAdmin = group?.role === "admin";
 
   const myDebts = reminders.filter((r) => r.debtor.id === user.id);
   const debtsToMe = reminders.filter((r) => r.creditor.user.id === user.id);
@@ -439,6 +463,7 @@ export default function Reminders({
                       variant="mine"
                       reminder={r}
                       currentUserId={user.id}
+                      isAdmin={isAdmin}
                       groupName={group?.name ?? ""}
                       confirming={confirmingKey === reminderKey(r)}
                       settling={settlingKey === reminderKey(r)}
@@ -457,6 +482,7 @@ export default function Reminders({
                       variant="theirs"
                       reminder={r}
                       currentUserId={user.id}
+                      isAdmin={isAdmin}
                       groupName={group?.name ?? ""}
                       confirming={confirmingKey === reminderKey(r)}
                       settling={settlingKey === reminderKey(r)}
@@ -475,6 +501,7 @@ export default function Reminders({
                       variant="other"
                       reminder={r}
                       currentUserId={user.id}
+                      isAdmin={isAdmin}
                       groupName={group?.name ?? ""}
                       confirming={confirmingKey === reminderKey(r)}
                       settling={settlingKey === reminderKey(r)}

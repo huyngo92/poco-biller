@@ -1,6 +1,6 @@
 import { requireUser } from "@/lib/auth";
 import { assertMember } from "@/lib/queries";
-import { exportGroupCsv, exportSettlementsCsv } from "@/lib/backup";
+import { exportStatementCsv } from "@/lib/backup";
 import { fail } from "@/lib/api";
 import { resolvePeriod } from "@/lib/period";
 import type { PeriodKind } from "@/lib/types";
@@ -14,8 +14,7 @@ export async function GET(req: Request, { params }: Ctx) {
     assertMember(groupId, user.id);
 
     const url = new URL(req.url);
-    // Chỉ còn hai định dạng CSV để tải — không còn JSON (không hỗ trợ import lại).
-    const format = url.searchParams.get("format") ?? "csv";
+    // Một định dạng CSV gộp duy nhất (bill + ghi nhận trả nợ) — không còn JSON (không hỗ trợ import lại).
     const rawKind = (url.searchParams.get("period") ?? "all") as PeriodKind;
     const kind: PeriodKind = ["week", "month", "quarter", "all"].includes(rawKind)
       ? rawKind
@@ -23,21 +22,11 @@ export async function GET(req: Request, { params }: Ctx) {
     const period = resolvePeriod(kind, Number(url.searchParams.get("offset") ?? 0) || 0);
     const stamp = new Date().toISOString().slice(0, 10);
 
-    if (format === "csv-settlements") {
-      const body = exportSettlementsCsv(groupId, period.from, period.to);
-      return new Response(body, {
-        headers: {
-          "content-type": "text/csv; charset=utf-8",
-          "content-disposition": `attachment; filename="poco-thanh-toan-${groupId}-${stamp}.csv"`,
-        },
-      });
-    }
-
-    const body = exportGroupCsv(groupId, period.from, period.to);
+    const body = exportStatementCsv(groupId, period.from, period.to);
     return new Response(body, {
       headers: {
         "content-type": "text/csv; charset=utf-8",
-        "content-disposition": `attachment; filename="poco-bills-${groupId}-${stamp}.csv"`,
+        "content-disposition": `attachment; filename="poco-sao-ke-${groupId}-${stamp}.csv"`,
       },
     });
   } catch (e) {
