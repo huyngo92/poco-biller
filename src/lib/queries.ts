@@ -504,6 +504,29 @@ export function deleteSettlement(id: number, userId: number): void {
   db.prepare("DELETE FROM settlements WHERE id = ?").run(id);
 }
 
+export function getDebtDetails(groupId: number, debtorId: number, creditorId: number) {
+  const db = getDb();
+
+  const bills = db.prepare(
+    `SELECT b.title, b.spent_on AS date, bs.amount, 'bill' AS type
+     FROM bills b
+     JOIN bill_shares bs ON b.id = bs.bill_id
+     WHERE b.group_id = ? AND b.paid_by = ? AND bs.user_id = ?
+     ORDER BY b.spent_on ASC, b.id ASC`
+  ).all(groupId, creditorId, debtorId) as { title: string; date: string; amount: number; type: 'bill' }[];
+
+  const settlements = db.prepare(
+    `SELECT 'Thanh toán' AS title, s.paid_on AS date, s.amount, 'settlement' AS type
+     FROM settlements s
+     WHERE s.group_id = ? AND s.from_user_id = ? AND s.to_user_id = ?
+     ORDER BY s.paid_on ASC, s.id ASC`
+  ).all(groupId, debtorId, creditorId) as { title: string; date: string; amount: number; type: 'settlement' }[];
+
+  const all = [...bills, ...settlements].sort((a, b) => a.date.localeCompare(b.date));
+
+  return all;
+}
+
 /* ---------- Tài khoản ngân hàng (dùng cho lời nhắc nợ) ---------- */
 
 export type BankAccountRow = {

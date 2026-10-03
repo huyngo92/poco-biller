@@ -92,8 +92,29 @@ function ReminderRow({
 }) {
   const [expanded, setExpanded] = useState(false);
   const [toneOpen, setToneOpen] = useState(false);
+  const [details, setDetails] = useState<{ title: string; date: string; amount: number; type: string }[]>([]);
+  const [loadingDetails, setLoadingDetails] = useState(false);
   const { debtor, creditor, amount } = reminder;
   const bankAccount = creditor.bankAccount;
+
+  useEffect(() => {
+    if (expanded && !details.length) {
+      setLoadingDetails(true);
+      apiJson<{ details: typeof details }>(
+        `/api/groups/${reminder.groupId}/debt-details?debtorId=${debtor.id}&creditorId=${creditor.user.id}`
+      )
+        .then((data) => {
+          setDetails(data.details);
+          setLoadingDetails(false);
+        })
+        .catch(() => {
+          setLoadingDetails(false);
+        });
+    }
+  }, [expanded, debtor.id, creditor.user.id]);
+
+  // Note: groupName is passed as prop. I need the actual groupId.
+
 
   // Ảnh QR VietQR động của SePay — chỉ sinh được khi ngân hàng nằm trong
   // danh sách SePay hỗ trợ (có sepayCode) và người nhận đã khai số tài khoản.
@@ -224,6 +245,29 @@ function ReminderRow({
               onClose={() => setToneOpen(false)}
             />
           )}
+          <div className="stack" style={{ padding: "8px 0", borderTop: "1px solid var(--rule)" }}>
+            <p className="faint tiny" style={{ marginBottom: 8, fontWeight: "bold" }}>SAO KÊ CHI TIẾT:</p>
+            {loadingDetails ? (
+              <p className="faint tiny">Đang tải sao kê...</p>
+            ) : details.length === 0 ? (
+              <p className="faint tiny">Không có giao dịch chi tiết.</p>
+            ) : (
+              <div className="stack" style={{ gap: 4 }}>
+                {details.map((d, i) => (
+                  <div key={i} className="row-wrap" style={{ fontSize: "11px", justifyContent: "space-between" }}>
+                    <span className="faint">{d.date} - {d.title}</span>
+                    <span className={d.type === 'bill' ? 'num' : 'num credit'}>
+                      {d.type === 'bill' ? `+${formatVnd(d.amount)}` : `-${formatVnd(d.amount)}`}
+                    </span>
+                  </div>
+                ))}
+                <div className="row-wrap" style={{ fontSize: "12px", fontWeight: "bold", borderTop: "1px solid var(--rule)", marginTop: 4, paddingTop: 4, justifyContent: "space-between" }}>
+                  <span>Tổng nợ:</span>
+                  <span className="num debt">{formatVnd(amount)}</span>
+                </div>
+              </div>
+            )}
+          </div>
           {canConfirm && (
             <button
               type="button"
