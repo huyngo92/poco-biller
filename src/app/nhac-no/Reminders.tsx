@@ -104,14 +104,15 @@ function ReminderRow({
         `/api/groups/${reminder.groupId}/debt-details?debtorId=${debtor.id}&creditorId=${creditor.user.id}`
       )
         .then((data) => {
-          setDetails(data.details);
+          setDetails(data.details || []);
           setLoadingDetails(false);
         })
-        .catch(() => {
+        .catch((err) => {
+          console.error("Failed to fetch debt details:", err);
           setLoadingDetails(false);
         });
     }
-  }, [expanded, debtor.id, creditor.user.id]);
+  }, [expanded, debtor.id, creditor.user.id, reminder.groupId]);
 
   // Note: groupName is passed as prop. I need the actual groupId.
 
